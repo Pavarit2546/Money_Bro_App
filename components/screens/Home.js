@@ -33,16 +33,15 @@ const HomeScreen = ({ route }) => {
       fetchData();
     }, []);
 
-    useEffect(() => {
+    useEffect(() => { //useEffect นี้ใช้แสดงข้อมูลที่ถูกบันทึกจากในหน้าเพิ่ม
       if (route.params?.transaction) {
-        const { title, amount } = route.params.transaction;
+        const { title, amount, note, time } = route.params.transaction;
         const type = route.params.type;
-        const newTransaction = { title, amount };
-  
+        const newTransaction = { title, amount, note, time };
+    
         if (type === 'expense') {
-          // ตรวจสอบว่าข้อมูลมีอยู่แล้วหรือไม่ก่อนเพิ่ม
           setExpense(prevExpense => {
-            const isExist = prevExpense.some(item => item.title === title && item.amount === amount);
+            const isExist = prevExpense.some(item => item.title === title && item.amount === amount && item.note === note && item.time === time);
             if (!isExist) {
               saveTransaction(newTransaction, 'expense');
               return [...prevExpense, newTransaction];
@@ -50,9 +49,8 @@ const HomeScreen = ({ route }) => {
             return prevExpense;
           });
         } else if (type === 'income') {
-          // ตรวจสอบว่าข้อมูลมีอยู่แล้วหรือไม่ก่อนเพิ่ม
           setIncome(prevIncome => {
-            const isExist = prevIncome.some(item => item.title === title && item.amount === amount);
+            const isExist = prevIncome.some(item => item.title === title && item.amount === amount && item.note === note && item.time === time);
             if (!isExist) {
               saveTransaction(newTransaction, 'income');
               return [...prevIncome, newTransaction];
@@ -64,6 +62,7 @@ const HomeScreen = ({ route }) => {
         route.params = {};
       }
     }, [route.params]);
+    
 
   const saveTransaction = async (transaction, type) => {
     try {
@@ -74,7 +73,7 @@ const HomeScreen = ({ route }) => {
   
       const existingData = await AsyncStorage.getItem(type);
       const currentData = existingData ? JSON.parse(existingData) : [];
-      const isExist = currentData.some(item => item.title === transaction.title && item.amount === transaction.amount);
+      const isExist = currentData.some(item => item.title === transaction.title && item.amount === transaction.amount && item.note === transaction.note && item.time === transaction.time);
       
       if (!isExist) {
         const updatedData = [...currentData, transaction];

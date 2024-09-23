@@ -10,12 +10,20 @@ import { useFocusEffect } from '@react-navigation/native';
 // ฟังก์ชันสำหรับบันทึกรายการ
 const saveTransaction = async (transaction, type, navigation) => {
   try {
-    const { title, amount } = transaction;
-    const transactionData = { title, amount: parseFloat(amount) };
+    const { title, amount, note, time } = transaction;
+
+    // แปลง amount เป็นตัวเลขและเพิ่ม note, time
+    const transactionData = { 
+      title, 
+      amount: parseFloat(amount), 
+      note: note || 'N/A',
+      time: time || new Date().toLocaleString()
+    };
 
     const existingData = await AsyncStorage.getItem(type);
     const currentData = existingData ? JSON.parse(existingData) : [];
-    const isDuplicate = currentData.some(item => item.title === transaction.title && item.amount === transaction.amount);
+    const isDuplicate = currentData.some(item => item.title === transaction.title && item.amount === transaction.amount && item.note === transaction.note && item.time === transaction.time
+    );
 
     if (!isDuplicate) {
       const updatedData = [...currentData, transactionData];
@@ -23,7 +31,6 @@ const saveTransaction = async (transaction, type, navigation) => {
       console.log('Transaction saved:', updatedData);
 
       // บันทึกลง Firestore
-      //await db.collection(type === 'expense' ? 'Expenses' : 'Incomes').add(transactionData);
       await addDoc(collection(db, type === 'expense' ? 'Expenses' : 'Incomes'), transactionData);
 
       navigation.navigate('ผู้จัดการเงิน', {
@@ -38,6 +45,7 @@ const saveTransaction = async (transaction, type, navigation) => {
   }
 };
 
+
 const AddTransactionScreen = ({ navigation }) => {
   const [isShowingExpenses, setIsShowingExpenses] = useState(true);
   const [title, setTitle] = useState('');
@@ -46,6 +54,9 @@ const AddTransactionScreen = ({ navigation }) => {
   const [incomeCategories, setIncomeCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null); // สถานะสำหรับเก็บหมวดหมู่ที่เลือก
   const inputRef = useRef(null);
+  const [note, setNote] = useState('');
+  const [time, setTime] = useState('');
+
 
   useFocusEffect(
     React.useCallback(() => {
@@ -56,11 +67,13 @@ const AddTransactionScreen = ({ navigation }) => {
     }, [])
   );
 
-  useEffect(() => {
+  useEffect(() => { // useEffect นี้เอาไว้รีเซ็ตสถานะเมื่อเข้าหน้า
     const unsubscribe = navigation.addListener('focus', () => {
-      setSelectedCategory(null); // รีเซ็ตสถานะเมื่อเข้าหน้า
-      setTitle(''); // รีเซ็ต title
-      setAmount(''); // รีเซ็ต amount
+      setSelectedCategory(null); 
+      setTitle('');
+      setAmount('');
+      setNote('');
+      setTime('');
     });
 
     return unsubscribe;
@@ -90,13 +103,17 @@ const AddTransactionScreen = ({ navigation }) => {
 
   const handleSave = async () => {
     if (title && amount && selectedCategory) { // ตรวจสอบว่าหมวดหมู่ถูกเลือกด้วย
-      const transaction = { title, amount: parseFloat(amount), category: selectedCategory.name }; // บันทึกหมวดหมู่
+      const transaction = { title, amount: parseFloat(amount), 
+        category: selectedCategory.name, 
+        note: note ? note : 'N/A', 
+        time: new Date().toLocaleTimeString() }; 
       const type = isShowingExpenses ? 'expense' : 'income';
 
       await saveTransaction(transaction, type, navigation);
 
       setTitle('');
       setAmount('');
+      setNote('');
       setSelectedCategory(null); // รีเซ็ตหมวดหมู่ที่เลือก
     } else {
       Alert.alert('ข้อมูลไม่ครบ', 'กรุณากรอกข้อมูลให้ครบถ้วน');
@@ -152,6 +169,7 @@ const AddTransactionScreen = ({ navigation }) => {
           onChangeText={setAmount}
           onFocus={() => inputRef.current.focus()}
         />
+        <TextInput style={styles.input} placeholder="เขียนโน้ต" value={note} onChangeText={setNote} />
         <Button title="บันทึก" onPress={handleSave} />
         </View> 
       </View>

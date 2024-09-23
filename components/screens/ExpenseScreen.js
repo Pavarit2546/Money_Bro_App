@@ -1,14 +1,15 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+
 
 // ฟังก์ชันสำหรับลบรายการ
 const removeTransaction = async (item, type) => {
   try {
     const existingData = await AsyncStorage.getItem(type);
     const currentData = existingData ? JSON.parse(existingData) : [];
-    const updatedData = currentData.filter(transaction => transaction.title !== item.title || transaction.amount !== item.amount);
+    const updatedData = currentData.filter(transaction => transaction.title !== item.title && transaction.amount !== item.amount);
+    //const updatedData = currentData.filter(transaction => transaction.id !== item.id);
     await AsyncStorage.setItem(type, JSON.stringify(updatedData));
   } catch (error) {
     console.error('Error removing data:', error);
@@ -19,6 +20,7 @@ const ExpenseScreen = ({ expense, setExpense }) => {
   const handleDelete = (item) => {
     removeTransaction(item, 'expense');
     setExpense(prev => prev.filter(transaction => transaction.title !== item.title || transaction.amount !== item.amount));
+    //setExpense(prev => prev.filter(transaction => transaction.id !== item.id));
   };
 
   return (
@@ -33,6 +35,8 @@ const ExpenseScreen = ({ expense, setExpense }) => {
             <View style={styles.item}>
               <Text style={styles.title}>{item.title}</Text>
               <Text style={styles.amount}>- ฿{item.amount.toLocaleString()}</Text>
+              <Text style={styles.note}>Note: {item.note || 'N/A'}</Text>
+              <Text style={styles.time}>Time: {item.time || 'N/A'}</Text>
               <TouchableOpacity onPress={() => handleDelete(item)}>
                 <Text style={styles.delete}>ลบ</Text>
               </TouchableOpacity>
@@ -80,7 +84,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 20,
     color: 'red',
-  }
+  },
+  note: {
+    fontSize: 14,
+    color: '#666',
+  },
+  time: {
+    fontSize: 12,
+    color: '#888',
+  },
 });
 
 export default ExpenseScreen;
