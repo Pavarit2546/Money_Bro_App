@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image,TouchableOpacity } from 'react-native';
+import AntDesign from '@expo/vector-icons/AntDesign';
 
 const NotificationScreen = () => {
   return (
@@ -11,7 +12,7 @@ const NotificationScreen = () => {
           <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ ยา </Text>
           <Text style={styles.description}>ใกล้ถึงกำหนดแล้ว </Text>
           <TouchableOpacity onPress={() => handleDeleteGoal(item)}>
-        <Text style={styles.deleteNoti}>ลบ</Text>  </TouchableOpacity>
+        <Text style={styles.deleteNoti}><AntDesign name="delete" size={18} color="black" /></Text>  </TouchableOpacity>
         </View>
       </View>
       <View style={styles.card}>
@@ -21,7 +22,7 @@ const NotificationScreen = () => {
           <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ การเดินทาง </Text>
           <Text style={styles.description}>ใกล้ถึงกำหนดแล้ว </Text>
           <TouchableOpacity onPress={() => handleDeleteGoal(item)}>
-        <Text style={styles.deleteNoti}>ลบ</Text>  </TouchableOpacity>
+        <Text style={styles.deleteNoti}><AntDesign name="delete" size={18} color="black" /></Text>  </TouchableOpacity>
         </View>
       </View>
       <View style={styles.card}>
@@ -31,7 +32,7 @@ const NotificationScreen = () => {
           <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ แฟชั่น </Text>
           <Text style={styles.description}>ใกล้ถึงกำหนดแล้ว </Text>
           <TouchableOpacity onPress={() => handleDeleteGoal(item)}>
-        <Text style={styles.deleteNoti}>ลบ</Text>  </TouchableOpacity>
+        <Text style={styles.deleteNoti}><AntDesign name="delete" size={18} color="black" /></Text>  </TouchableOpacity>
         </View>
       </View>
       <View style={styles.card}>
@@ -41,7 +42,7 @@ const NotificationScreen = () => {
           <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ การศึกษา </Text>
           <Text style={styles.description}>ใกล้ถึงกำหนดแล้ว</Text>
           <TouchableOpacity onPress={() => handleDeleteGoal(item)}>
-        <Text style={styles.deleteNoti}>ลบ</Text>  </TouchableOpacity>
+        <Text style={styles.deleteNoti}><AntDesign name="delete" size={18} color="black" /></Text>  </TouchableOpacity>
         </View>
       </View>
       <View style={styles.card}>
@@ -51,7 +52,7 @@ const NotificationScreen = () => {
           <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ ยา </Text>
           <Text style={styles.description}> ใกล้ถึงกำหนดแล้ว</Text>
           <TouchableOpacity onPress={() => handleDeleteGoal(item)}>
-        <Text style={styles.deleteNoti}>ลบ</Text>  </TouchableOpacity>
+        <Text style={styles.deleteNoti}><AntDesign name="delete" size={18} color="black" /></Text>  </TouchableOpacity>
         </View>
       </View>
       <View style={styles.card}>
@@ -61,7 +62,7 @@ const NotificationScreen = () => {
           <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ ที่อยู่อาศัย </Text>
           <Text style={styles.description}>ใกล้ถึงกำหนดแล้ว</Text>
           <TouchableOpacity onPress={() => handleDeleteGoal(item)}>
-        <Text style={styles.deleteNoti}>ลบ</Text>  </TouchableOpacity>
+        <Text style={styles.deleteNoti}><AntDesign name="delete" size={18} color="black" /></Text>  </TouchableOpacity>
         </View>
       </View>
       <View style={styles.card}>
@@ -71,7 +72,7 @@ const NotificationScreen = () => {
           <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ สังคม </Text>
           <Text style={styles.description}>ใกล้ถึงกำหนดแล้ว</Text>
           <TouchableOpacity onPress={() => handleDeleteGoal(item)}>
-        <Text style={styles.deleteNoti}>ลบ</Text>  </TouchableOpacity>
+        <Text style={styles.deleteNoti}><AntDesign name="delete" size={18} color="black" /></Text>  </TouchableOpacity>
         </View>
       </View>
     </View>
