@@ -22,6 +22,7 @@ const GoalStackNavigator = () => (
   <Stack.Navigator>
     <Stack.Screen name="GoalScreen" component={GoalScreen} options={{ headerShown: false }} />
     <Stack.Screen name="เพิ่มเป้าหมายการเงิน" component={AddGoalScreen} />
+<<<<<<< HEAD
   </Stack.Navigator>
 );
 const StackNavigator = () => (
@@ -32,6 +33,8 @@ const StackNavigator = () => (
     <Stack.Screen name="Addexpense" component={AddTransactionScreen} />
     <Stack.Screen name="Addincome" component={AddTransactionScreen} />
     <Stack.Screen name="SummaryScreen" component={SummaryScreen} />
+=======
+>>>>>>> 2f6d50b (Save changes before pull with rebase)
   </Stack.Navigator>
 );
 
@@ -80,7 +83,10 @@ const TabNavigator = () => {
         name="หน้าแรก" 
         component={HomeScreen} 
         options={{ headerShown: true, headerTitleAlign: 'center',headerTitle: 'ผู้จัดการเงิน', tabBarIcon: ({ color }) => (<Icon name="home" size={24} color={color} />) 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 2f6d50b (Save changes before pull with rebase)
         }} 
       />
       <Tab.Screen 
