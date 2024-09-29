@@ -1,34 +1,76 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity , ScrollView} from 'react-native';
-import AntDesign from '@expo/vector-icons/AntDesign';
+import React, { useState, useCallback } from 'react';
+import { View, Text, FlatList, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase'; // Adjust the path to your firebase configuration
+import { useFocusEffect } from '@react-navigation/native'; // Import useFocusEffect
+import moment from 'moment'; // Optional for date formatting
 
 const NotificationScreen = () => {
-  const handleDeleteGoal = (item) => {
-    // Add your delete logic here
+  const [goals, setGoals] = useState([]);
+  const [loading, setLoading] = useState(true); // Loading state
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchGoals = async () => {
+        setLoading(true); // Show loading spinner
+        try {
+          const querySnapshot = await getDocs(collection(db, 'Goals'));
+          const goalsData = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            date: doc.data().date || moment(doc.data().createdAt.toDate()).format('DD/MM/YYYY'),
+          }));
+
+          // Filter only goals where remainingAmount is less than or equal to 20% of the amount
+          const filteredGoals = goalsData.filter(item => (item.remainingAmount / item.amount) * 100 <= 20);
+
+          setGoals(filteredGoals);
+        } catch (error) {
+          console.error('Error fetching goals:', error);
+        } finally {
+          setLoading(false); // Hide loading spinner
+        }
+      };
+
+      fetchGoals();
+
+      return () => {
+        // Clean up if needed when leaving the screen
+        setGoals([]); // Optional: Clear the data when the screen is unfocused
+      };
+    }, []) // Empty dependency array ensures it runs only when screen is focused/unfocused
+  );
+
+  const renderGoalItem = ({ item }) => {
+    return (
+      <View style={styles.card}>
+        <Image source={{ uri: item.icon }} style={styles.icon} />
+        <View style={styles.textContainer}>
+          <Text style={styles.title}>การแจ้งเตือนการใช้จ่าย</Text>
+          <Text style={styles.alertText}>
+            จำนวนยอดเงินในหมวดหมู่ {item.title} ใกล้ถึงกำหนดแล้ว
+          </Text>
+        </View>
+      </View>
+    );
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {Array.from({ length: 7 }).map((_, index) => (
-        <View style={styles.card} key={index}>
-          <View style={styles.textContainer}>
-            <Text style={styles.title}>การแจ้งเตือนการใช้งาน</Text>
-            <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ {getCategory(index)} </Text>
-            <Text style={styles.description}>ใกล้ถึงกำหนดแล้ว</Text>
-            <TouchableOpacity onPress={() => handleDeleteGoal(index)}>
-              <AntDesign name="delete" size={18} color="red" style={styles.deleteNoti} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      ))}
-    </ScrollView>
+    <View style={styles.container}>
+      {loading ? (
+        <ActivityIndicator size="large" color="#0000ff" style={styles.loadingSpinner} />
+      ) : goals.length > 0 ? (
+        <FlatList
+          data={goals}
+          keyExtractor={(item) => item.id}
+          renderItem={renderGoalItem}
+          contentContainerStyle={styles.goalList}
+        />
+      ) : (
+        <Text style={styles.noGoalsText}>ไม่มีข้อมูลการแจ้งเตือน</Text>
+      )}
+    </View>
   );
-};
-
-// Helper function to get category name based on index
-const getCategory = (index) => {
-  const categories = ["ยา", "การเดินทาง", "แฟชั่น", "การศึกษา", "ยา", "ที่อยู่อาศัย", "สังคม"];
-  return categories[index % categories.length];
 };
 
 const styles = StyleSheet.create({
@@ -51,6 +93,12 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
   },
+  icon: {
+    width: 50,
+    height: 50,
+    borderRadius: 5,
+    marginRight: 16,
+  },
   textContainer: {
     flex: 1,
   },
@@ -62,15 +110,28 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     color: '#666',
+    marginBottom: 4,
   },
-  deleteNoti: {
-    color: 'red',
+  alertText: {
+    fontSize: 14,
+    color: '#49454F', // Warning color
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
+  deleteIcon: {
+    marginTop: 8,
+  },
+  noGoalsText: {
+    textAlign: 'center',
     fontSize: 16,
-    alignSelf: 'flex-end',
-    position: 'absolute',
-    right: 10,
-    top: '50%',
-    transform: [{ translateY: -40 }],
+    color: '#999',
+    marginTop: 20,
+  },
+  goalList: {
+    paddingHorizontal: 20,
+  },
+  loadingSpinner: {
+    marginTop: 20,
   },
 });
 
