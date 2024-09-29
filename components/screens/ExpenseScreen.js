@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { db } from '../../firebase'; // เส้นทางที่ถูกต้องไปยังไฟล์ firebase.js
+import { db } from '../../firebase'; // Ensure your Firebase configuration is correct
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { doc, deleteDoc } from 'firebase/firestore';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import dayjs from 'dayjs'; // Day.js for consistent date handling
+import customParseFormat from 'dayjs/plugin/customParseFormat'; 
+
+dayjs.extend(customParseFormat); // Enable custom parse formats
 
 const ExpenseScreen = () => {
   const [expenses, setExpenses] = useState([]);
-  const [expensesicon, setExpensesicon] = useState([]);
-  const [loading, setLoading] = useState(true); // ย้ายการประกาศ useState มาที่นี่
+  const [expensesIcon, setExpensesIcon] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // ฟังก์ชันสำหรับลบรายการ
+  // Function to remove a transaction
   const removeTransaction = async (item, type) => {
     try {
       const existingData = await AsyncStorage.getItem(type);
@@ -22,16 +26,15 @@ const ExpenseScreen = () => {
       console.error('Error removing data:', error);
     }
   };
+
   useEffect(() => {
     const fetchExpenses = async () => {
       try {
+        const today = new Date(); // Get the current date
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1); // First day of the current month
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0); // Last day of the current month
 
-        const today = new Date(); // วันที่ปัจจุบัน
-        // อันนี้คือทดลองดู
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1); // วันแรกของเดือน
-        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0); // วันสุดท้ายของเดือน
-
-        // แปลง firstDayOfMonth และ lastDayOfMonth ให้เป็นสตริงในรูปแบบเดียวกันกับที่เก็บใน Firestore
+        // Convert dates to strings
         const firstDayOfMonthStr = `${(firstDayOfMonth.getMonth() + 1)}/${firstDayOfMonth.getDate()}/${firstDayOfMonth.getFullYear()}, ${firstDayOfMonth.toLocaleTimeString()}`;
         const lastDayOfMonthStr = `${(lastDayOfMonth.getMonth() + 1)}/${lastDayOfMonth.getDate()}/${lastDayOfMonth.getFullYear()}, ${lastDayOfMonth.toLocaleTimeString()}`;
 
@@ -41,37 +44,31 @@ const ExpenseScreen = () => {
           where('time', '<=', lastDayOfMonthStr)
         );
 
-        // ดึงข้อมูลจาก 'ExpenseCategories'
-        const expensesicon = await getDocs(collection(db, 'ExpenseCategories'));
-        const expenseiconlist = expensesicon.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log('Fetched icon expense data:', expenseiconlist);
-        setExpensesicon(expenseiconlist);
+        // Fetch expense icons
+        const expensesIconSnapshot = await getDocs(collection(db, 'ExpenseCategories'));
+        const expensesIconList = expensesIconSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setExpensesIcon(expensesIconList);
 
-        // ดึงข้อมูลจาก 'Expenses'
+        // Fetch expenses
         const expenseSnapshot = await getDocs(expensesQuery);
-        let expenseList = expenseSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log('Fetched expense data:', expenseList);
+        const expenseList = expenseSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // เพิ่ม imageUrl ให้กับ expenseList ถ้า title ตรงกับ name
+        // Update expense list with matching icons
         const updatedExpenseList = expenseList.map(expense => {
-          const matchedIcon = expenseiconlist.find(icon => icon.name === expense.title);
-          return matchedIcon
-            ? { ...expense, imageUrl: matchedIcon.imageUrl }
-            : expense;  // ถ้าเจอ name ตรง ก็ใส่ imageUrl, ถ้าไม่เจอ ก็คืนค่า expense เดิม
+          const matchedIcon = expensesIconList.find(icon => icon.name === expense.title);
+          return matchedIcon ? { ...expense, imageUrl: matchedIcon.imageUrl } : expense;
         });
 
-        console.log('Updated expense data with imageUrl:', updatedExpenseList);
         setExpenses(updatedExpenseList);
       } catch (error) {
         console.error('Error fetching expenses:', error);
       } finally {
-        setLoading(false); // หยุดการแสดง Loading เมื่อดึงข้อมูลเสร็จแล้ว
+        setLoading(false);
       }
     };
 
     fetchExpenses();
   }, []);
-
 
   const handleDelete = async (item) => {
     Alert.alert(
@@ -86,11 +83,8 @@ const ExpenseScreen = () => {
           text: 'ลบ',
           onPress: async () => {
             try {
-              // ลบรายการจาก Firebase
-              await deleteDoc(doc(db, 'Expenses', item.id)); // ใช้ item.id เพื่อระบุเอกสารที่จะลบ
-
-              // อัปเดตสถานะใน React
-              setExpenses(prev => prev.filter(transaction => transaction.id !== item.id));
+              await deleteDoc(doc(db, 'Expenses', item.id)); // Delete document from Firestore
+              setExpenses(prev => prev.filter(transaction => transaction.id !== item.id)); // Update state
             } catch (error) {
               console.error('Error deleting document:', error);
             }
@@ -101,10 +95,23 @@ const ExpenseScreen = () => {
     );
   };
 
+  // Utility to parse and format time
+  const formatTimeThai = (time) => {
+    // Attempt to parse the time using common formats
+    const parsedDate = dayjs(time, ['M/D/YYYY, h:mm:ss A', 'DD/MM/YYYY, HH:mm:ss'], true);
+
+    if (parsedDate.isValid()) {
+      // Format the time in Thai locale with the correct format
+      return parsedDate.format('HH:mm น.'); // Only show the time in 24-hour format with 'น.' for Thai
+    } else {
+      return 'Invalid Date'; // Fallback for invalid dates
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color='red' style={{ transform: [{ scale: 4 }] }} />
+        <ActivityIndicator size="large" color="red" style={{ transform: [{ scale: 4 }] }} />
       </View>
     );
   }
@@ -117,27 +124,30 @@ const ExpenseScreen = () => {
         <FlatList
           data={expenses}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.item}>
-              <View style={styles.img}>
-                <Image source={{ uri: item.imageUrl }} style={styles.image} />
-              </View>
-              <View style={styles.object2}>
-                <View style={styles.inobject}>
-                  <Text style={styles.title}>{item.title}</Text>
-                  <Text style={styles.amount}>- {item.amount.toLocaleString()} บ.</Text>
-                </View>
-                <View style={styles.inobject}>
-                  <Text style={styles.note}>Note: {item.note || 'N/A'}</Text>
-                  <Text>{item.time ? new Date(item.time).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'N/A'} น.</Text>
+          renderItem={({ item }) => {
+            const formattedTime = formatTimeThai(item.time); // Format the time to Thai
 
+            return (
+              <View style={styles.item}>
+                <View style={styles.img}>
+                  <Image source={{ uri: item.imageUrl }} style={styles.image} />
                 </View>
+                <View style={styles.object2}>
+                  <View style={styles.inobject}>
+                    <Text style={styles.title}>{item.title}</Text>
+                    <Text style={styles.amount}>- {item.amount.toLocaleString()} บ.</Text>
+                  </View>
+                  <View style={styles.inobject}>
+                    <Text style={styles.note}>Note: {item.note || 'N/A'}</Text>
+                    <Text>{formattedTime}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={() => handleDelete(item)} style={styles.object3}>
+                  <Ionicons name="trash-outline" size={24} color="red" />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={() => handleDelete(item)} style={styles.object3}>
-                <Ionicons name="trash-outline" size={24} color="red" />
-              </TouchableOpacity>
-            </View>
-          )}
+            );
+          }}
         />
       )}
     </View>
@@ -215,7 +225,7 @@ const styles = StyleSheet.create({
     width: 45,
     height: 45,
     borderRadius: 8,
-    backgroundColor: "#f6f6f6",
+    backgroundColor: '#f6f6f6',
   },
 });
 

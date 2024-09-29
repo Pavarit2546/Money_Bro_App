@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { db } from '../../firebase'; // เส้นทางที่ถูกต้องไปยังไฟล์ firebase.js
+import { db } from '../../firebase'; // Ensure your Firebase configuration is correct
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { doc, deleteDoc } from 'firebase/firestore';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import dayjs from 'dayjs'; // ใช้ dayjs สำหรับจัดการเวลา
+import customParseFormat from 'dayjs/plugin/customParseFormat'; // ใช้ customParseFormat สำหรับแปลงฟอร์แมตวันที่
+
+dayjs.extend(customParseFormat); // เรียกใช้งาน customParseFormat
 
 // ฟังก์ชันสำหรับลบรายการ
 const removeTransaction = async (item, type) => {
@@ -20,18 +24,17 @@ const removeTransaction = async (item, type) => {
 
 const IncomeScreen = () => {
   const [income, setIncome] = useState([]);
-  const [incomeicon, seticon] = useState([]);
+  const [incomeIcon, setIncomeIcon] = useState([]);
   const [loading, setLoading] = useState(true); // สถานะการโหลด
 
   useEffect(() => {
     const fetchIncome = async () => {
       try {
+        const today = new Date(); 
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1); 
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0); 
 
-        const today = new Date(); // วันที่ปัจจุบัน
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1); // วันแรกของเดือน
-        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0); // วันสุดท้ายของเดือน
-
-        // แปลง firstDayOfMonth และ lastDayOfMonth ให้เป็นสตริงในรูปแบบเดียวกันกับที่เก็บใน Firestore
+        // แปลงวันที่เป็นรูปแบบ string สำหรับการใช้งานใน Firestore
         const firstDayOfMonthStr = `${(firstDayOfMonth.getMonth() + 1)}/${firstDayOfMonth.getDate()}/${firstDayOfMonth.getFullYear()}, ${firstDayOfMonth.toLocaleTimeString()}`;
         const lastDayOfMonthStr = `${(lastDayOfMonth.getMonth() + 1)}/${lastDayOfMonth.getDate()}/${lastDayOfMonth.getFullYear()}, ${lastDayOfMonth.toLocaleTimeString()}`;
 
@@ -42,10 +45,10 @@ const IncomeScreen = () => {
         );
 
         // ดึงข้อมูลจาก 'IncomeCategories'
-        const incomeicon = await getDocs(collection(db, 'IncomeCategories'));
-        const incomeiconlist = incomeicon.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log('Fetched icon income data:', incomeiconlist);
-        setIncome(incomeiconlist); // ไม่แน่ใจว่าใช้ setExpensesicon ถูกต้องหรือไม่ อาจจะใช้ setIncomeicon
+        const incomeIconSnapshot = await getDocs(collection(db, 'IncomeCategories'));
+        const incomeIconList = incomeIconSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log('Fetched icon income data:', incomeIconList);
+        setIncomeIcon(incomeIconList); 
 
         // ดึงข้อมูลจาก 'Incomes'
         const incomeSnapshot = await getDocs(IncomeQuery);
@@ -54,15 +57,12 @@ const IncomeScreen = () => {
 
         // เพิ่ม imageUrl ให้กับ incomeList ถ้า title ตรงกับ name
         const updatedIncomeList = incomeList.map(income => {
-          const matchedIcon = incomeiconlist.find(icon => icon.name === income.title);
-          return matchedIcon
-            ? { ...income, imageUrl: matchedIcon.imageUrl }
-            : income;
+          const matchedIcon = incomeIconList.find(icon => icon.name === income.title);
+          return matchedIcon ? { ...income, imageUrl: matchedIcon.imageUrl } : income;
         });
 
         console.log('Updated income data with imageUrl:', updatedIncomeList);
         setIncome(updatedIncomeList);
-
       } catch (error) {
         console.error('Error fetching income:', error);
       } finally {
@@ -72,7 +72,6 @@ const IncomeScreen = () => {
 
     fetchIncome();
   }, []);
-
 
   const handleDelete = async (item) => {
     Alert.alert(
@@ -88,7 +87,7 @@ const IncomeScreen = () => {
           onPress: async () => {
             try {
               // ลบรายการจาก Firebase
-              await deleteDoc(doc(db, 'Income', item.id));
+              await deleteDoc(doc(db, 'Incomes', item.id));
 
               // ลบรายการจาก AsyncStorage
               await removeTransaction(item, 'income');
@@ -103,6 +102,16 @@ const IncomeScreen = () => {
         },
       ]
     );
+  };
+
+  // แสดงเวลาในรูปแบบเดียวกับหน้า ExpenseScreen
+  const parseTime = (time) => {
+    // ลองใช้ dayjs ในการแปลงเวลาให้ถูกต้องตามรูปแบบในฐานข้อมูล
+    const parsedTime = dayjs(time, 'M/D/YYYY, h:mm:ss A', true); // แปลงด้วย custom format
+    if (!parsedTime.isValid()) {
+      return 'Invalid Date'; // ถ้าแปลงไม่ได้
+    }
+    return parsedTime.format('HH:mm น.'); // แสดงเวลาตามที่ต้องการ
   };
 
   if (loading) {
@@ -133,7 +142,7 @@ const IncomeScreen = () => {
                 </View>
                 <View style={styles.inobject}>
                   <Text style={styles.note}>Note: {item.note || 'N/A'}</Text>
-                  <Text>{item.time ? new Date(item.time).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'N/A'} น.</Text>
+                  <Text>{item.time ? parseTime(item.time) : 'N/A'}</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={() => handleDelete(item)} style={styles.object3}>
