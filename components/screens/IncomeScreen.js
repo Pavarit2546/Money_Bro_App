@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator,Image } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../../firebase'; // เส้นทางที่ถูกต้องไปยังไฟล์ firebase.js
-import { collection, getDocs ,query, where} from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { doc, deleteDoc } from 'firebase/firestore';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 // ฟังก์ชันสำหรับลบรายการ
 const removeTransaction = async (item, type) => {
@@ -33,45 +34,45 @@ const IncomeScreen = () => {
         // แปลง firstDayOfMonth และ lastDayOfMonth ให้เป็นสตริงในรูปแบบเดียวกันกับที่เก็บใน Firestore
         const firstDayOfMonthStr = `${(firstDayOfMonth.getMonth() + 1)}/${firstDayOfMonth.getDate()}/${firstDayOfMonth.getFullYear()}, ${firstDayOfMonth.toLocaleTimeString()}`;
         const lastDayOfMonthStr = `${(lastDayOfMonth.getMonth() + 1)}/${lastDayOfMonth.getDate()}/${lastDayOfMonth.getFullYear()}, ${lastDayOfMonth.toLocaleTimeString()}`;
-        
+
         const IncomeQuery = query(
           collection(db, 'Incomes'),
           where('time', '>=', firstDayOfMonthStr),
           where('time', '<=', lastDayOfMonthStr)
-          );
+        );
 
         // ดึงข้อมูลจาก 'IncomeCategories'
         const incomeicon = await getDocs(collection(db, 'IncomeCategories'));
         const incomeiconlist = incomeicon.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log('Fetched icon income data:', incomeiconlist); 
-        setIncomeicon(incomeiconlist); // ไม่แน่ใจว่าใช้ setExpensesicon ถูกต้องหรือไม่ อาจจะใช้ setIncomeicon
-  
+        console.log('Fetched icon income data:', incomeiconlist);
+        setIncome(incomeiconlist); // ไม่แน่ใจว่าใช้ setExpensesicon ถูกต้องหรือไม่ อาจจะใช้ setIncomeicon
+
         // ดึงข้อมูลจาก 'Incomes'
         const incomeSnapshot = await getDocs(IncomeQuery);
         const incomeList = incomeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log('Fetched income data:', incomeList); 
-  
+        console.log('Fetched income data:', incomeList);
+
         // เพิ่ม imageUrl ให้กับ incomeList ถ้า title ตรงกับ name
         const updatedIncomeList = incomeList.map(income => {
           const matchedIcon = incomeiconlist.find(icon => icon.name === income.title);
-          return matchedIcon 
-            ? { ...income, imageUrl: matchedIcon.imageUrl } 
-            : income;  
+          return matchedIcon
+            ? { ...income, imageUrl: matchedIcon.imageUrl }
+            : income;
         });
-  
+
         console.log('Updated income data with imageUrl:', updatedIncomeList);
         setIncome(updatedIncomeList);
-        
+
       } catch (error) {
         console.error('Error fetching income:', error);
       } finally {
-        setLoading(false); 
+        setLoading(false);
       }
     };
-  
+
     fetchIncome();
   }, []);
-  
+
 
   const handleDelete = async (item) => {
     Alert.alert(
@@ -107,7 +108,7 @@ const IncomeScreen = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="green" style={{ transform: [{ scale: 4 }] }}/>
+        <ActivityIndicator size="large" color="green" style={{ transform: [{ scale: 4 }] }} />
       </View>
     );
   }
@@ -122,8 +123,8 @@ const IncomeScreen = () => {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.item}>
-              <View style={styles.img}> 
-              <Image source={{ uri: item.imageUrl }} style={styles.image} />
+              <View style={styles.img}>
+                <Image source={{ uri: item.imageUrl }} style={styles.image} />
               </View>
               <View style={styles.object2}>
                 <View style={styles.inobject}>
@@ -136,7 +137,7 @@ const IncomeScreen = () => {
                 </View>
               </View>
               <TouchableOpacity onPress={() => handleDelete(item)} style={styles.object3}>
-                <Text style={styles.delete}>ลบ</Text>
+                <Ionicons name="trash-outline" size={24} color="red" />
               </TouchableOpacity>
             </View>
           )}
@@ -214,10 +215,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   image: {
-    width: 45, 
-    height: 45, 
-    borderRadius: 8, 
-    backgroundColor:"#f6f6f6",
+    width: 45,
+    height: 45,
+    borderRadius: 8,
+    backgroundColor: "#f6f6f6",
   },
 });
 

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect, useContext } from 'react'; 
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import IncomeSummaryScreen from './IncomeSummaryScreen';
 import ExpenseSummaryScreen from './ExpenseSummaryScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TypeContext } from '../../TypeContext';
 
 const loadTransactions = async (type) => {
   try {
@@ -18,7 +19,8 @@ const SummaryScreen = ({ route }) => {
   const [isShowingExpenses, setIsShowingExpenses] = useState(true);
   const [expense, setExpense] = useState([]);
   const [income, setIncome] = useState([]);
-
+  const { type } = useContext(TypeContext);
+  console.log('Type:', type);
   useEffect(() => {
     const fetchData = async () => {
       const expenseData = await loadTransactions('expense');
@@ -29,21 +31,41 @@ const SummaryScreen = ({ route }) => {
     fetchData();
   }, []);
 
+  // useEffect(() => {
+  //   if (route.params?.transaction) {
+  //     const { title, amount } = route.params.transaction;
+  //     const type = route.params.type;
+  //     if (type === 'expense') {
+  //       setExpense(prevExpense => [...prevExpense, { title, amount }]);
+  //       saveTransaction({ title, amount }, 'expense');
+  //       setIsShowingExpenses(true);
+  //     } else if (type === 'income') {
+  //       setIncome(prevIncome => [...prevIncome, { title, amount }]);
+  //       saveTransaction({ title, amount }, 'income');
+  //       setIsShowingExpenses(false);
+  //     }
+  //     // Clear route params
+  //     route.params = {};
+  //   }
+  // }, [route.params?.transaction, type]);
   useEffect(() => {
-    if (route.params?.transaction) {
-      const { title, amount } = route.params.transaction;
-      const type = route.params.type;
+    const { transaction } = route.params || {};
+    if (transaction) {
+      const { title, amount } = transaction;
       if (type === 'expense') {
-        setExpense(prevExpense => [...prevExpense, { title, amount }]);
+        setExpense(prev => [...prev, { title, amount }]);
         saveTransaction({ title, amount }, 'expense');
+        setIsShowingExpenses(true);
       } else if (type === 'income') {
-        setIncome(prevIncome => [...prevIncome, { title, amount }]);
+        setIncome(prev => [...prev, { title, amount }]);
         saveTransaction({ title, amount }, 'income');
+        setIsShowingExpenses(false);
       }
-      // Clear route params
-      route.params = {};
+      
+      // Clear the transaction after processing it
+      navigation.setParams({ transaction: undefined });
     }
-  }, [route.params?.transaction, route.params?.type]);
+  }, [route.params?.transaction, type]);
 
   const saveTransaction = async (transaction, type) => {
     try {
@@ -64,21 +86,9 @@ const SummaryScreen = ({ route }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, isShowingExpenses && styles.activeTabExpense]}
-            onPress={() => setIsShowingExpenses(true)}>
-            <Text style={[styles.tabText, isShowingExpenses && styles.activeText]}>รายจ่าย</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, !isShowingExpenses && styles.activeTabIncome]}
-            onPress={() => setIsShowingExpenses(false)}>
-            <Text style={[styles.tabText, !isShowingExpenses && styles.activeText]}>รายรับ</Text>
-          </TouchableOpacity>
-        </View>
       </View>
-      {isShowingExpenses ? (
-        <ExpenseSummaryScreen expense={expense} />
+      {type === 'expense' ? (
+        <ExpenseSummaryScreen expense={expense} /> 
       ) : (
         <IncomeSummaryScreen income={income} />
       )}

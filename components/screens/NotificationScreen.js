@@ -1,88 +1,39 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image,TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity , ScrollView} from 'react-native';
 import AntDesign from '@expo/vector-icons/AntDesign';
 
 const NotificationScreen = () => {
+  const handleDeleteGoal = (item) => {
+    // Add your delete logic here
+  };
+
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Image source={require('../../assets/Health-icon.png')} style={styles.icon} />
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>การแจ้งเตือนการใช้งาน</Text>
-          <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ ยา </Text>
-          <Text style={styles.description}>ใกล้ถึงกำหนดแล้ว </Text>
-          <TouchableOpacity onPress={() => handleDeleteGoal(item)}>
-        <Text style={styles.deleteNoti}><AntDesign name="delete" size={18} color="black" /></Text>  </TouchableOpacity>
+    <ScrollView style={styles.container}>
+      {Array.from({ length: 7 }).map((_, index) => (
+        <View style={styles.card} key={index}>
+          <View style={styles.textContainer}>
+            <Text style={styles.title}>การแจ้งเตือนการใช้งาน</Text>
+            <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ {getCategory(index)} </Text>
+            <Text style={styles.description}>ใกล้ถึงกำหนดแล้ว</Text>
+            <TouchableOpacity onPress={() => handleDeleteGoal(index)}>
+              <AntDesign name="delete" size={18} color="red" style={styles.deleteNoti} />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-      <View style={styles.card}>
-        <Image source={require('../../assets/Transport-icon.png')} style={styles.icon} />
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>การแจ้งเตือนการใช้งาน</Text>
-          <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ การเดินทาง </Text>
-          <Text style={styles.description}>ใกล้ถึงกำหนดแล้ว </Text>
-          <TouchableOpacity onPress={() => handleDeleteGoal(item)}>
-        <Text style={styles.deleteNoti}><AntDesign name="delete" size={18} color="black" /></Text>  </TouchableOpacity>
-        </View>
-      </View>
-      <View style={styles.card}>
-        <Image source={require('../../assets/Fashion-icon.png')} style={styles.icon} />
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>การแจ้งเตือนการใช้งาน</Text>
-          <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ แฟชั่น </Text>
-          <Text style={styles.description}>ใกล้ถึงกำหนดแล้ว </Text>
-          <TouchableOpacity onPress={() => handleDeleteGoal(item)}>
-        <Text style={styles.deleteNoti}><AntDesign name="delete" size={18} color="black" /></Text>  </TouchableOpacity>
-        </View>
-      </View>
-      <View style={styles.card}>
-        <Image source={require('../../assets/Edu-icon.png')} style={styles.icon} />
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>การแจ้งเตือนการใช้งาน</Text>
-          <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ การศึกษา </Text>
-          <Text style={styles.description}>ใกล้ถึงกำหนดแล้ว</Text>
-          <TouchableOpacity onPress={() => handleDeleteGoal(item)}>
-        <Text style={styles.deleteNoti}><AntDesign name="delete" size={18} color="black" /></Text>  </TouchableOpacity>
-        </View>
-      </View>
-      <View style={styles.card}>
-        <Image source={require('../../assets/Health-icon.png')} style={styles.icon} />
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>การแจ้งเตือนการใช้งาน</Text>
-          <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ ยา </Text>
-          <Text style={styles.description}> ใกล้ถึงกำหนดแล้ว</Text>
-          <TouchableOpacity onPress={() => handleDeleteGoal(item)}>
-        <Text style={styles.deleteNoti}><AntDesign name="delete" size={18} color="black" /></Text>  </TouchableOpacity>
-        </View>
-      </View>
-      <View style={styles.card}>
-        <Image source={require('../../assets/House-icon.png')} style={styles.icon} />
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>การแจ้งเตือนการใช้งาน</Text>
-          <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ ที่อยู่อาศัย </Text>
-          <Text style={styles.description}>ใกล้ถึงกำหนดแล้ว</Text>
-          <TouchableOpacity onPress={() => handleDeleteGoal(item)}>
-        <Text style={styles.deleteNoti}><AntDesign name="delete" size={18} color="black" /></Text>  </TouchableOpacity>
-        </View>
-      </View>
-      <View style={styles.card}>
-        <Image source={require('../../assets/Social-icon.png')} style={styles.icon} />
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>การแจ้งเตือนการใช้งาน</Text>
-          <Text style={styles.description}>จำนวนยอดเงินในหมวดหมู่ สังคม </Text>
-          <Text style={styles.description}>ใกล้ถึงกำหนดแล้ว</Text>
-          <TouchableOpacity onPress={() => handleDeleteGoal(item)}>
-        <Text style={styles.deleteNoti}><AntDesign name="delete" size={18} color="black" /></Text>  </TouchableOpacity>
-        </View>
-      </View>
-    </View>
+      ))}
+    </ScrollView>
   );
+};
+
+// Helper function to get category name based on index
+const getCategory = (index) => {
+  const categories = ["ยา", "การเดินทาง", "แฟชั่น", "การศึกษา", "ยา", "ที่อยู่อาศัย", "สังคม"];
+  return categories[index % categories.length];
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
     backgroundColor: '#f0f0f0',
     padding: 16,
   },
@@ -99,12 +50,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     width: '100%',
     alignItems: 'center',
-  },
-  icon: {
-    width: 50,
-    height: 50,
-    borderRadius: 10,
-    marginRight: 16,
   },
   textContainer: {
     flex: 1,
@@ -124,10 +69,9 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     position: 'absolute',
     right: 10,
-    top: '50%',  
-    transform: [{ translateY: -40 }] 
+    top: '50%',
+    transform: [{ translateY: -40 }],
   },
-
 });
 
 export default NotificationScreen;
