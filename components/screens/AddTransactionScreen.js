@@ -2,20 +2,21 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Keyboard, TouchableWithoutFeedback, 
   TouchableOpacity, ScrollView, Alert, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { app, db } from '../../firebase'; // เส้นทางที่ถูกต้องไปยังไฟล์ firebase.js
-import { collection, getDocs, addDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc,updateDoc,doc } from 'firebase/firestore';
 import { useFocusEffect } from '@react-navigation/native';
+import { Timestamp } from 'firebase/firestore';
 
 // ฟังก์ชันสำหรับบันทึกรายการ
 const saveTransaction = async (transaction, type, navigation) => {
   try {
-    const { title, amount, note, time } = transaction;
+    const { title, amount, note, date } = transaction;
 
     // แปลง amount เป็นตัวเลขและเพิ่ม note, time
     const transactionData = { 
       title, 
       amount: parseFloat(amount), 
       note: note || 'N/A',
-      time: time || new Date().toLocaleString()
+      date: date ? Timestamp.fromDate(new Date(date)) : Timestamp.now() 
     };
     console.log('Saving transaction data:', transactionData);
     
@@ -134,7 +135,7 @@ const AddTransactionScreen = ({ navigation }) => {
         amount: parseFloat(amount), 
         category: selectedCategory.name, 
         note: note || 'N/A', 
-        date: date || new Date().toISOString() 
+        date: date || new Date().toISOString()
         
       }; 
       const type = isShowingExpenses ? 'expense' : 'income';

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Dimensions, StyleSheet, FlatList, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import { Picker } from '@react-native-picker/picker';
-import firebase from 'firebase/app';
 import 'firebase/firestore';
 import { db } from '../../firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -11,12 +10,16 @@ const ExpenseSummaryScreen = () => {
   const [expenseData, setExpenseData] = useState([]);
   const [totalExpense, setTotalExpense] = useState(0);
   const [flatListData, setFlatListData] = useState([]);
-  const [expensesicon, setExpensesIcon] = useState([]);
+  const [expensesicon, setExpensesicon] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [isTrantoMonth, setIsTrantoMonth] = useState(true);
   const [loading, setLoading] = useState(false);
-  
+  useEffect(() => {
+    setFlatListData([]);
+    setTotalExpense(0);
+    setExpenseData([]);
+  }, [isTrantoMonth]);
 
   const colors = [
     '#FF6347', '#4682B4', '#FFD700', '#40E0D0', '#9370DB',
@@ -73,60 +76,61 @@ const ExpenseSummaryScreen = () => {
           );
         }
 
-        const expenseSnapshot = await getDocs(expensesQuery);
-        const expenseIconSnapshot = await getDocs(collection(db, 'ExpenseCategories'));
-        //const expenseIconList = expensesIconSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const expensesList = expenseSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const iconList = expenseIconSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        //setExpensesicon(expenseIconList);
+        const expensesIconSnapshot = await getDocs(collection(db, 'ExpenseCategories'));
+        const expenseIconList = expensesIconSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setExpensesicon(expenseIconList);
 
-        // const snapshot = await getDocs(expensesQuery);
-        // const parsedData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // setFlatListData(parsedData);
+        const snapshot = await getDocs(expensesQuery);
+        const parsedData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setFlatListData(parsedData);
 
-        const categoryTotals = {};
-        expensesList.forEach(item => {
-          if (!categoryTotals[item.title]) {
-            categoryTotals[item.title] = 0;
-          }
-          categoryTotals[item.title] += item.amount;
-        });
-
-        const total = Object.values(categoryTotals).reduce((sum, value) => sum + value, 0);
-        setTotalExpense(total);
-
-        const dataWithPercentages = Object.keys(categoryTotals).map((category, index) => ({
-          title: category,
-          amount: categoryTotals[category],
-          percentage: ((categoryTotals[category] / total) * 100).toFixed(2),
-          color: colors[index % colors.length],
-        }));
-
-        
-
-        // ปรับการแสดงผลไอคอนในแต่ละรายการ
-        // const updatedExpenseList = parsedData.map(expense => {
-        //   const matchedIcon = expenseIconList.find(icon => icon.name === expense.title);
-        //   return {
-        //     ...expense,
-        //     imageUrl: matchedIcon ? matchedIcon.imageUrl : null, // ตรวจสอบว่ามีไอคอนไหม
-        //   };
-        // });
-
-        setExpenseData(dataWithPercentages);
-        //setFlatListData(updatedExpenseList); // ปรับให้ใช้ updatedExpenseList
-        setExpenseData(dataWithPercentages);
-        setFlatListData(expensesList);
-        setExpensesIcon(iconList);
+        if (parsedData.length > 0) {
+          setFlatListData(parsedData);
+  
+          const categoryTotals = {};
+          parsedData.forEach(item => {
+            if (!categoryTotals[item.title]) {
+              categoryTotals[item.title] = 0;
+            }
+            categoryTotals[item.title] += item.amount;
+          });
+  
+          const total = Object.values(categoryTotals).reduce((sum, value) => sum + value, 0);
+          setTotalExpense(total);
+  
+          const dataWithPercentages = Object.keys(categoryTotals).map((category, index) => ({
+            title: category,
+            amount: categoryTotals[category],
+            percentage: ((categoryTotals[category] / total) * 100).toFixed(2),
+            color: colors[index % colors.length],
+          }));
+  
+          // ปรับการแสดงผลไอคอนในแต่ละรายการ
+          const updatedExpenseList = parsedData.map(expense => {
+            const matchedIcon = expenseIconList.find(icon => icon.name === expense.title);
+            return {
+              ...expense,
+              imageUrl: matchedIcon ? matchedIcon.imageUrl : null, // ตรวจสอบว่ามีไอคอนไหม
+            };
+          });
+  
+          setExpenseData(dataWithPercentages);
+          setFlatListData(updatedExpenseList); // ปรับให้ใช้ updatedExpenseList
+        } else {
+          // ถ้าไม่มีข้อมูลในปีนั้นๆ ให้รีเซ็ตข้อมูลแสดงผล
+          setFlatListData([]);
+          setTotalExpense(0);
+          setExpenseData([]);
+        }
       } catch (error) {
         console.error('Error fetching expenses:', error);
       } finally {
         setLoading(false);
       }
     };
-
+  
     fetchExpenses();
-  }, [selectedMonth, selectedYear, isTrantoMonth]);
+  }, [selectedMonth, selectedYear]);
 
   return (
     <View style={styles.container}>
@@ -320,12 +324,12 @@ const styles = StyleSheet.create({
   picker: {
     width: '50%',
     height: 50,
-    marginBottom: 20, // ระยะห่างด้านล่าง
-    paddingHorizontal: 0, // ระยะห่างด้านข้างให้ชิดกับคำ
+    marginBottom: 20,
+    paddingHorizontal: 0,
     textAlign: 'left',
     fontSize: 18,
-    alignSelf: 'flex-start', // จัดชิดซ้ายของจอ
-    justifyContent: 'flex-start', // จัดวางเนื้อหาชิดซ้ายภายใน
+    alignSelf: 'flex-start',
+    justifyContent: 'flex-start',
   },
   emptyContainer: {
     flex: 1,

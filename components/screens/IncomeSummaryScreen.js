@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Dimensions, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
+import { View, Text, Dimensions, StyleSheet, FlatList, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import { Picker } from '@react-native-picker/picker';
-import { db } from '../../firebase'; // เปลี่ยนให้ตรงตามเส้นทางจริง
-import { collection, getDocs, query, where } from 'firebase/firestore'; // นำเข้าเมธอดที่จำเป็น
+import 'firebase/firestore';
+import { db } from '../../firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 const IncomeSummaryScreen = () => {
   const [incomeData, setIncomeData] = useState([]);
@@ -14,6 +15,11 @@ const IncomeSummaryScreen = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [isTrantoMonth, setIsTrantoMonth] = useState(true);
   const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    setFlatListData([]);
+    setTotalExpense(0);
+    setExpenseData([]);
+  }, [isTrantoMonth]);
 
   const colors = [
     '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
@@ -77,41 +83,52 @@ const IncomeSummaryScreen = () => {
         const parsedData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setFlatListData(parsedData);
 
-        const categoryTotals = {};
-        parsedData.forEach(item => {
-          if (!categoryTotals[item.title]) {
-            categoryTotals[item.title] = 0;
-          }
-          categoryTotals[item.title] += item.amount;
-        });
-
-        const total = Object.values(categoryTotals).reduce((sum, value) => sum + value, 0);
-        setTotalIncome(total);
-
-        const dataWithPercentages = Object.keys(categoryTotals).map((category, index) => ({
-          title: category,
-          amount: categoryTotals[category],
-          percentage: ((categoryTotals[category] / total) * 100).toFixed(2),
-          color: colors[index % colors.length],
-        }));
-
-        // ปรับการแสดงผลไอคอนในแต่ละรายการ
-        const updatedIncomeList = parsedData.map(income => {
-          const matchedIcon = incomeIconList.find(icon => icon.name === income.title);
-          return {
-            ...income,
-            imageUrl: matchedIcon ? matchedIcon.imageUrl : null, // ตรวจสอบว่ามีไอคอนไหม
-          };
-        });
-
-        setIncomeData(dataWithPercentages);
-        setFlatListData(updatedIncomeList);
+        if (parsedData.length > 0) {
+          setFlatListData(parsedData);
+  
+          const categoryTotals = {};
+          parsedData.forEach(item => {
+            if (!categoryTotals[item.title]) {
+              categoryTotals[item.title] = 0;
+            }
+            categoryTotals[item.title] += item.amount;
+          });
+  
+          const total = Object.values(categoryTotals).reduce((sum, value) => sum + value, 0);
+          setTotalIncome(total);
+  
+          const dataWithPercentages = Object.keys(categoryTotals).map((category, index) => ({
+            title: category,
+            amount: categoryTotals[category],
+            percentage: ((categoryTotals[category] / total) * 100).toFixed(2),
+            color: colors[index % colors.length],
+          }));
+  
+          // ปรับการแสดงผลไอคอนในแต่ละรายการ
+          const updatedIncomeList = parsedData.map(expense => {
+            const matchedIcon = incomeIconList.find(icon => icon.name === expense.title);
+            return {
+              ...expense,
+              imageUrl: matchedIcon ? matchedIcon.imageUrl : null, // ตรวจสอบว่ามีไอคอนไหม
+            };
+          });
+  
+          setExpenseData(dataWithPercentages);
+          setFlatListData(updatedIncomeList); // ปรับให้ใช้ updatedExpenseList
+        } else {
+          // ถ้าไม่มีข้อมูลในปีนั้นๆ ให้รีเซ็ตข้อมูลแสดงผล
+          setFlatListData([]);
+          setTotalIncome(0);
+          setIncomeData([]);
+        }
       } catch (error) {
-        console.error('Error fetching incomes:', error);
+        console.error('Error fetching expenses:', error);
+      } finally {
+        setLoading(false);
       }
     };
-
-    fetchIncomes();
+  
+    fetchExpenses();
   }, [selectedMonth, selectedYear]);
 
   return (
@@ -180,7 +197,10 @@ const IncomeSummaryScreen = () => {
           <Text style={styles.totalText}>{totalIncome.toLocaleString()} บ.</Text>
         </View>
       </View>
-
+      {loading ? (
+        <ActivityIndicator size="large" color='red' style={{ transform: [{ scale: 2 }] }} />
+      ) : (
+        <>
       <FlatList
         data={flatListData}
         keyExtractor={(item) => item.id}
@@ -212,6 +232,8 @@ const IncomeSummaryScreen = () => {
         )}
         style={styles.list}
       />
+      </>
+      )}
     </View>
   );
 };
@@ -299,16 +321,14 @@ const styles = StyleSheet.create({
     color: 'gray',
   },
   picker: {
-    width: '80%', // ความกว้างของ Picker
-    height: 50, // ความสูงของ Picker
-    borderColor: '#ccc', // สีของขอบ
-    borderWidth: 1, // ความหนาของขอบ
-    borderRadius: 8, // รัศมีของมุม
-    backgroundColor: '#f0f0f0', // สีพื้นหลัง
-    marginBottom: 20, // ระยะห่างด้านล่าง
-    paddingHorizontal: 10, // ระยะห่างด้านข้าง
-    textAlign: 'center',
+    width: '50%',
+    height: 50,
+    marginBottom: 20,
+    paddingHorizontal: 0,
+    textAlign: 'left',
     fontSize: 18,
+    alignSelf: 'flex-start',
+    justifyContent: 'flex-start',
   },
   emptyContainer: {
     flex: 1,

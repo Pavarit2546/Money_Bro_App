@@ -1,41 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../../firebase'; // เส้นทางที่ถูกต้องไปยังไฟล์ firebase.js
-import { collection, query, where, onSnapshot,getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { doc, deleteDoc } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 
 const ExpenseScreen = () => {
   const [expenses, setExpenses] = useState([]);
   const [expensesicon, setExpensesicon] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { 
+  useEffect(() => {
     const today = new Date(); // วันที่ปัจจุบัน
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1); // วันแรกของเดือน
     const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0); // วันสุดท้ายของเดือน
 
-    const padZero = (number) => number < 10 ? '0' + number : number;
-
-// ฟังก์ชันสำหรับแปลงเป็นรูปแบบ DD/MM/YYYY HH:MM:SS
-    const formatDateTime = (date) => {
-    const day = padZero(date.getDate());
-    const month = padZero(date.getMonth() + 1);
-    const year = date.getFullYear();
-    const time = date.toLocaleTimeString('th-TH', { hour12: false }); // ให้เวลาเป็นแบบ 24 ชั่วโมง
-
-    return `${day}/${month}/${year} ${time}`;
-};
-
-const firstDayOfMonthStr = formatDateTime(firstDayOfMonth); // วันแรกของเดือนพร้อมเวลา 00:00:00
-const lastDayOfMonthStr = formatDateTime(lastDayOfMonth); // วันสุดท้ายของเดือนพร้อมเวลา 23:59:59
-
+    // สร้าง Timestamp
+    const firstDayOfMonthTimestamp = Timestamp.fromDate(firstDayOfMonth);
+    const lastDayOfMonthTimestamp = Timestamp.fromDate(lastDayOfMonth);
 
     // ตั้งค่า query สำหรับดึงข้อมูลรายจ่าย
     const expensesQuery = query(
       collection(db, 'Expenses'),
-      where('time', '>=', firstDayOfMonthStr),
-      where('time', '<=', lastDayOfMonthStr)
+      where('time', '>=', firstDayOfMonthTimestamp),
+      where('time', '<=', lastDayOfMonthTimestamp)
     );
 
     // ฟังการเปลี่ยนแปลงแบบเรียลไทม์จาก Firebase
@@ -46,11 +34,11 @@ const lastDayOfMonthStr = formatDateTime(lastDayOfMonth); // วันสุด�
         const expenseiconlist = expensesicon.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         console.log('Expense Icons:', expenseiconlist);
         setExpensesicon(expenseiconlist);
-  
+
         // ดึงข้อมูลรายจ่าย
         let expenseList = expenseSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         console.log('Expenses:', expenseList); // แสดง log ข้อมูลรายจ่าย
-  
+
         // เพิ่ม imageUrl ให้กับ expenseList ถ้า title ตรงกับ name
         const updatedExpenseList = expenseList.map(expense => {
           const matchedIcon = expenseiconlist.find(icon => icon.name === expense.title);
@@ -68,10 +56,7 @@ const lastDayOfMonthStr = formatDateTime(lastDayOfMonth); // วันสุด�
     });
 
     return () => unsubscribe(); // ยกเลิกการสมัครรับข้อมูลเมื่อ component ถูกทำลาย
-}, []);
-
-
-  
+  }, []);
 
   const handleDelete = async (item) => {
     Alert.alert(
@@ -113,13 +98,13 @@ const lastDayOfMonthStr = formatDateTime(lastDayOfMonth); // วันสุด�
     <View style={styles.container}>
       {expenses.length === 0 ? (
         <Text style={styles.text}>ไม่มีรายจ่าย</Text>
-      ) : (                                            
+      ) : (
         <FlatList
           data={expenses}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.item}>
-              <View style={styles.img}> 
+              <View style={styles.img}>
                 <Image source={{ uri: item.imageUrl }} style={styles.image} />
               </View>
               <View style={styles.object2}>
@@ -129,7 +114,7 @@ const lastDayOfMonthStr = formatDateTime(lastDayOfMonth); // วันสุด�
                 </View>
                 <View style={styles.inobject}>
                   <Text style={styles.note}>Note: {item.note || 'N/A'}</Text>
-                  <Text>{item.time ? new Date(item.time).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'N/A'} น.</Text>
+                  <Text>{item.time ? new Date(item.time.toDate()).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'N/A'} น.</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={() => handleDelete(item)} style={styles.object3}>
