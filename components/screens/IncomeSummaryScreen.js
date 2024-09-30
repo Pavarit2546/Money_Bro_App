@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Dimensions, StyleSheet, FlatList, Image } from 'react-native';
+import { View, Text, Dimensions, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import { Picker } from '@react-native-picker/picker';
 import { db } from '../../firebase'; // เปลี่ยนให้ตรงตามเส้นทางจริง
@@ -9,8 +9,11 @@ const IncomeSummaryScreen = () => {
   const [incomeData, setIncomeData] = useState([]);
   const [totalIncome, setTotalIncome] = useState(0);
   const [flatListData, setFlatListData] = useState([]); // State สำหรับ FlatList
-  const [incomeicon, setIncomeicon] = useState([]); 
+  const [incomeicon, setIncomeicon] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [isTrantoMonth, setIsTrantoMonth] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const colors = [
     '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
@@ -32,22 +35,39 @@ const IncomeSummaryScreen = () => {
     { label: 'พฤศจิกายน', value: 11 },
     { label: 'ธันวาคม', value: 12 },
   ];
+  const years = [2022, 2023, 2024, 2025];
+
 
   useEffect(() => {
     const fetchIncomes = async () => {
       try {
-        const today = new Date();
-        const firstDayOfMonth = new Date(today.getFullYear(), selectedMonth - 1, 1);
-        const lastDayOfMonth = new Date(today.getFullYear(), selectedMonth, 0);
-       
-        const firstDayOfMonthStr = `${(firstDayOfMonth.getMonth() + 1)}/${firstDayOfMonth.getDate()}/${firstDayOfMonth.getFullYear()}`;
-        const lastDayOfMonthStr = `${(lastDayOfMonth.getMonth() + 1)}/${lastDayOfMonth.getDate()}/${lastDayOfMonth.getFullYear()}`;
-        
-        const incomeQuery = query(
-          collection(db, 'Incomes'), // เปลี่ยนเป็นชื่อคอลเล็กชันที่ถูกต้อง
-          where('time', '>=', firstDayOfMonthStr),
-          where('time', '<=', lastDayOfMonthStr)
-        );
+        let incomeQuery;
+        if ( isTrantoMonth ) {
+          const today = new Date();
+          const firstDayOfMonth = new Date(today.getFullYear(), selectedMonth - 1, 1);
+          const lastDayOfMonth = new Date(today.getFullYear(), selectedMonth, 0);
+
+          const firstDayOfMonthStr = `${(firstDayOfMonth.getMonth() + 1)}/${firstDayOfMonth.getDate()}/${firstDayOfMonth.getFullYear()}`;
+          const lastDayOfMonthStr = `${(lastDayOfMonth.getMonth() + 1)}/${lastDayOfMonth.getDate()}/${lastDayOfMonth.getFullYear()}`;
+
+          incomeQuery = query(
+            collection(db, 'Incomes'),
+            where('time', '>=', firstDayOfMonthStr),
+            where('time', '<=', lastDayOfMonthStr)
+          );
+        } else {
+          const firstDayOfYear = new Date(selectedYear, 0, 1);
+          const lastDayOfYear = new Date(selectedYear, 11, 31);
+
+          const firstDayOfYearStr = `1/1/${firstDayOfYear.getFullYear()}`;
+          const lastDayOfYearStr = `12/31/${lastDayOfYear.getFullYear()}`;
+
+          incomeQuery = query(
+            collection(db, 'Incomes'),
+            where('time', '>=', firstDayOfYearStr),
+            where('time', '<=', lastDayOfYearStr)
+          );
+        }
 
         const incomeIconSnapshot = await getDocs(collection(db, 'IncomeCategories'));
         const incomeIconList = incomeIconSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -92,20 +112,47 @@ const IncomeSummaryScreen = () => {
     };
 
     fetchIncomes();
-  }, [selectedMonth]);
+  }, [selectedMonth, selectedYear]);
 
   return (
     <View style={styles.container}>
-      <Picker
-        selectedValue={selectedMonth}
-        style={styles.picker}
-        onValueChange={(itemValue) => setSelectedMonth(itemValue)}
-        dropdownIconColor="#000" // เปลี่ยนสีของลูกศร
-      >
-        {months.map(month => (
-          <Picker.Item key={month.value} label={month.label} value={month.value} />
-        ))}
-      </Picker>
+      <View style={styles.header}>
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, isTrantoMonth && styles.activeTabExpense]}
+            onPress={() => setIsTrantoMonth(true)}>
+            <Text style={[styles.tabText, isTrantoMonth && styles.activeText]}>เดือน</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, !isTrantoMonth && styles.activeTabIncome]}
+            onPress={() => setIsTrantoMonth(false)}>
+            <Text style={[styles.tabText, !isTrantoMonth && styles.activeText]}>ปี</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* เลือกเดือนหรือปีตามที่กำหนด */}
+      { isTrantoMonth ? (
+        <Picker
+          selectedValue={selectedMonth}
+          style={styles.picker}
+          onValueChange={(itemValue) => setSelectedMonth(itemValue)}
+        >
+          {months.map(month => (
+            <Picker.Item key={month.value} label={month.label} value={month.value} />
+          ))}
+        </Picker>
+      ) : (
+        <Picker
+          selectedValue={selectedYear}
+          style={styles.picker}
+          onValueChange={(itemValue) => setSelectedYear(itemValue)}
+        >
+          {years.map(year => (
+            <Picker.Item key={year} label={year.toString()} value={year} />
+          ))}
+        </Picker>
+      )}
 
       <View style={styles.chartContainer}>
         <PieChart
@@ -137,6 +184,11 @@ const IncomeSummaryScreen = () => {
       <FlatList
         data={flatListData}
         keyExtractor={(item) => item.id}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>ไม่มีรายการรายรับ</Text>
+          </View>
+        )}
         renderItem={({ item }) => (
           <View style={styles.item}>
             <View style={styles.img}>
@@ -257,6 +309,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, // ระยะห่างด้านข้าง
     textAlign: 'center',
     fontSize: 18,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 20,
+  },
+  emptyText: {
+    fontSize: 25,
+    color: 'red',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    borderWidth: 2,
+    borderColor: 'black',
+    borderRadius: 10,
+    overflow: 'hidden',
+    width: 250,
+  },
+  tab: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 30,
+  },
+  activeTabExpense: {
+    backgroundColor: 'black',
+    borderBottomLeftRadius: 7,
+    borderTopLeftRadius: 7,
+  },
+  activeTabIncome: {
+    backgroundColor: 'black',
+    borderBottomRightRadius: 7,
+    borderTopRightRadius: 7,
+  },
+  activeText: {
+    color: 'white',
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'black',
   },
 });
 

@@ -1,76 +1,68 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { db } from '../../firebase'; // Ensure your Firebase configuration is correct
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../../firebase'; // เส้นทางที่ถูกต้องไปยังไฟล์ firebase.js
+import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { doc, deleteDoc } from 'firebase/firestore';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import dayjs from 'dayjs'; // ใช้ dayjs สำหรับจัดการเวลา
-import customParseFormat from 'dayjs/plugin/customParseFormat'; // ใช้ customParseFormat สำหรับแปลงฟอร์แมตวันที่
-
-dayjs.extend(customParseFormat); // เรียกใช้งาน customParseFormat
-
-// ฟังก์ชันสำหรับลบรายการ
-const removeTransaction = async (item, type) => {
-  try {
-    const existingData = await AsyncStorage.getItem(type);
-    const currentData = existingData ? JSON.parse(existingData) : [];
-    const updatedData = currentData.filter(transaction => transaction.title !== item.title || transaction.amount !== item.amount);
-    await AsyncStorage.setItem(type, JSON.stringify(updatedData));
-  } catch (error) {
-    console.error('Error removing data:', error);
-  }
-};
 
 const IncomeScreen = () => {
   const [income, setIncome] = useState([]);
-  const [incomeIcon, setIncomeIcon] = useState([]);
-  const [loading, setLoading] = useState(true); // สถานะการโหลด
+  const [incomeicon, setIncomeicon] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchIncome = async () => {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    const padZero = (number) => number < 10 ? '0' + number : number;
+
+    // ฟังก์ชันสำหรับแปลงเป็นรูปแบบ DD/MM/YYYY HH:MM:SS
+    const formatDateTime = (date) => {
+      const day = padZero(date.getDate());
+      const month = padZero(date.getMonth() + 1);
+      const year = date.getFullYear();
+      const time = date.toLocaleTimeString('th-TH', { hour12: false });
+      return `${day}/${month}/${year} ${time}`;
+    };
+
+    const firstDayOfMonthStr = formatDateTime(firstDayOfMonth);
+    const lastDayOfMonthStr = formatDateTime(lastDayOfMonth);
+
+    console.log(firstDayOfMonthStr);
+    console.log(lastDayOfMonthStr);
+
+    const incomeQuery = query(
+      collection(db, 'Incomes'),
+      where('time', '>=', firstDayOfMonthStr),
+      where('time', '<=', lastDayOfMonthStr)
+    );
+
+    const unsubscribe = onSnapshot(incomeQuery, async (incomeSnapshot) => {
       try {
-        const today = new Date(); 
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1); 
-        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0); 
+        const incomeicon = await getDocs(collection(db, 'IncomeCategories'));
+        const incomeiconlist = incomeicon.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log('Income Icons:', incomeiconlist);
+        setIncomeicon(incomeiconlist);
 
-        // แปลงวันที่เป็นรูปแบบ string สำหรับการใช้งานใน Firestore
-        const firstDayOfMonthStr = `${(firstDayOfMonth.getMonth() + 1)}/${firstDayOfMonth.getDate()}/${firstDayOfMonth.getFullYear()}, ${firstDayOfMonth.toLocaleTimeString()}`;
-        const lastDayOfMonthStr = `${(lastDayOfMonth.getMonth() + 1)}/${lastDayOfMonth.getDate()}/${lastDayOfMonth.getFullYear()}, ${lastDayOfMonth.toLocaleTimeString()}`;
+        let incomeList = incomeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log('Income:', incomeList);
 
-        const IncomeQuery = query(
-          collection(db, 'Incomes'),
-          where('time', '>=', firstDayOfMonthStr),
-          where('time', '<=', lastDayOfMonthStr)
-        );
-
-        // ดึงข้อมูลจาก 'IncomeCategories'
-        const incomeIconSnapshot = await getDocs(collection(db, 'IncomeCategories'));
-        const incomeIconList = incomeIconSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log('Fetched icon income data:', incomeIconList);
-        setIncomeIcon(incomeIconList); 
-
-        // ดึงข้อมูลจาก 'Incomes'
-        const incomeSnapshot = await getDocs(IncomeQuery);
-        const incomeList = incomeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log('Fetched income data:', incomeList);
-
-        // เพิ่ม imageUrl ให้กับ incomeList ถ้า title ตรงกับ name
         const updatedIncomeList = incomeList.map(income => {
-          const matchedIcon = incomeIconList.find(icon => icon.name === income.title);
-          return matchedIcon ? { ...income, imageUrl: matchedIcon.imageUrl } : income;
+          const matchedIcon = incomeiconlist.find(icon => icon.name === income.title);
+          return matchedIcon
+            ? { ...income, imageUrl: matchedIcon.imageUrl }
+            : income;
         });
-
-        console.log('Updated income data with imageUrl:', updatedIncomeList);
+        console.log('Updated Income:', updatedIncomeList);
         setIncome(updatedIncomeList);
       } catch (error) {
         console.error('Error fetching income:', error);
       } finally {
         setLoading(false);
       }
-    };
+    });
 
-    fetchIncome();
+    return () => unsubscribe();
   }, []);
 
   const handleDelete = async (item) => {
@@ -86,13 +78,7 @@ const IncomeScreen = () => {
           text: 'ลบ',
           onPress: async () => {
             try {
-              // ลบรายการจาก Firebase
-              await deleteDoc(doc(db, 'Incomes', item.id));
-
-              // ลบรายการจาก AsyncStorage
-              await removeTransaction(item, 'income');
-
-              // อัปเดตสถานะใน React
+              await deleteDoc(doc(db, 'Income', item.id));
               setIncome(prev => prev.filter(transaction => transaction.id !== item.id));
             } catch (error) {
               console.error('Error deleting document:', error);
@@ -102,16 +88,6 @@ const IncomeScreen = () => {
         },
       ]
     );
-  };
-
-  // แสดงเวลาในรูปแบบเดียวกับหน้า ExpenseScreen
-  const parseTime = (time) => {
-    // ลองใช้ dayjs ในการแปลงเวลาให้ถูกต้องตามรูปแบบในฐานข้อมูล
-    const parsedTime = dayjs(time, 'M/D/YYYY, h:mm:ss A', true); // แปลงด้วย custom format
-    if (!parsedTime.isValid()) {
-      return 'Invalid Date'; // ถ้าแปลงไม่ได้
-    }
-    return parsedTime.format('HH:mm น.'); // แสดงเวลาตามที่ต้องการ
   };
 
   if (loading) {
@@ -142,11 +118,11 @@ const IncomeScreen = () => {
                 </View>
                 <View style={styles.inobject}>
                   <Text style={styles.note}>Note: {item.note || 'N/A'}</Text>
-                  <Text>{item.time ? parseTime(item.time) : 'N/A'}</Text>
+                  <Text>{item.time ? new Date(item.time).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'N/A'} น.</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={() => handleDelete(item)} style={styles.object3}>
-                <Ionicons name="trash-outline" size={24} color="red" />
+                <Text style={styles.delete}>ลบ</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -213,10 +189,6 @@ const styles = StyleSheet.create({
   note: {
     fontSize: 14,
     color: '#666',
-  },
-  time: {
-    fontSize: 12,
-    color: '#888',
   },
   loadingContainer: {
     flex: 1,

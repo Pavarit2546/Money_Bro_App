@@ -15,10 +15,25 @@ const loadTransactions = async (type) => {
   }
 };
 
+// const filterByMonthOrYear = (transactions, isYearly) => {
+//   const currentDate = new Date();
+//   if (isYearly) {
+//     console.log('ifcurrentDate', currentDate);
+//     return transactions.filter(t => new Date(t.date).getFullYear() === currentDate.getFullYear());
+//   } else {
+//     console.log('ifcurrentDate', currentDate);
+//     return transactions.filter(t => 
+//       new Date(t.date).getMonth() === currentDate.getMonth() &&
+//       new Date(t.date).getFullYear() === currentDate.getFullYear()
+//     );
+//   }
+// };
+
 const SummaryScreen = ({ route }) => {
   const [isShowingExpenses, setIsShowingExpenses] = useState(true);
   const [expense, setExpense] = useState([]);
   const [income, setIncome] = useState([]);
+  const [isYearly, setIsYearly] = useState(false);//
   const { type } = useContext(TypeContext);
   console.log('Type:', type);
   useEffect(() => {
@@ -50,6 +65,7 @@ const SummaryScreen = ({ route }) => {
   // }, [route.params?.transaction, type]);
   useEffect(() => {
     const { transaction } = route.params || {};
+    console.log('Transaction', transaction);
     if (transaction) {
       const { title, amount } = transaction;
       if (type === 'expense') {
@@ -82,15 +98,31 @@ const SummaryScreen = ({ route }) => {
       console.error('Error saving transaction:', error);
     }
   };
+  //const filteredExpenses = filterByMonthOrYear(expense, isYearly);
+  //const filteredIncome = filterByMonthOrYear(income, isYearly);
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-      </View>
-      {type === 'expense' ? (
-        <ExpenseSummaryScreen expense={expense} /> 
+      {/* <View style={styles.header}>
+        <View style={styles.tabContainer}>
+        <TouchableOpacity
+            style={[styles.tab, !isYearly && styles.activeTabExpense]}
+            onPress={() => setIsYearly(false)}>
+            <Text style={[styles.tabText, !isYearly && styles.activeText]}>เดือน</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, isYearly && styles.activeTabIncome]}
+            onPress={() => setIsYearly(true)}>
+            <Text style={[styles.tabText, isYearly && styles.activeText]}>ปี</Text>
+          </TouchableOpacity>
+        </View>
+      </View> */}
+
+      
+      {type === 'income' ? (
+        <IncomeSummaryScreen income={income}/> 
       ) : (
-        <IncomeSummaryScreen income={income} />
+        <ExpenseSummaryScreen expense={expense}/>
       )}
     </View>
   );

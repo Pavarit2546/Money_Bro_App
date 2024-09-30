@@ -23,12 +23,46 @@ const saveTransaction = async (transaction, type, navigation) => {
     const docRef = await addDoc(collection(db, type === 'expense' ? 'Expenses' : 'Incomes'), transactionData);
     console.log('Transaction saved with ID:', docRef.id); // แสดง ID ของรายการที่บันทึก
 
+    // อัปเดตยอดเงินคงเหลือของเป้าหมายหากเป็นรายการรายจ่าย
+    if (type === 'expense') {
+      await updateGoalRemainingAmount(transactionData);
+    }
+
     navigation.navigate('หน้าแรก', {
       transaction: { id: docRef.id, ...transactionData }, // ส่ง ID กลับไปด้วย
       type
     });
   } catch (error) {
     console.error('Error saving transaction:', error);
+  }
+};
+
+// ฟังก์ชันอัปเดตยอดเงินคงเหลือใน Firestore
+const updateGoalRemainingAmount = async (transaction) => {
+  const { title, amount } = transaction;
+
+  try {
+    // ดึงข้อมูลทั้งหมดจาก Firestore คอลเลกชัน 'Goals'
+    const goalsSnapshot = await getDocs(collection(db, 'Goals'));
+    const goals = goalsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    // ตรวจสอบว่าเป้าหมายในหมวดหมู่นี้มีอยู่หรือไม่
+    const existingGoal = goals.find(goal => goal.title === title);
+
+    if (existingGoal) {
+      // อัปเดตยอดเงินคงเหลือ
+      const updatedRemainingAmount = parseFloat(existingGoal.remainingAmount) - parseFloat(amount);
+
+      // อัปเดตเป้าหมายใน Firestore
+      await updateDoc(doc(db, 'Goals', existingGoal.id), {
+        remainingAmount: updatedRemainingAmount >= 0 ? updatedRemainingAmount : 0, // ป้องกันไม่ให้ยอดคงเหลือติดลบ
+      });
+    }
+  } catch (error) {
+    console.error('Error updating goal remaining amount:', error);
   }
 };
 
@@ -101,6 +135,7 @@ const AddTransactionScreen = ({ navigation }) => {
         category: selectedCategory.name, 
         note: note || 'N/A', 
         date: date || new Date().toISOString() 
+        
       }; 
       const type = isShowingExpenses ? 'expense' : 'income';
 
