@@ -45,93 +45,97 @@ const IncomeSummaryScreen = () => {
 
 
   useEffect(() => {
-    const fetchIncomes = async () => {
-      setLoading(true);
-      try {
-        let incomeQuery;
-        if (isTrantoMonth) {
-          const firstDayOfMonth = new Date(selectedYear, selectedMonth - 1, 1);
-          const lastDayOfMonth = new Date(selectedYear, selectedMonth, 0);
+  const fetchIncomes = async () => {
+    setLoading(true);
+    try {
+      let incomeQuery;
 
-          // Convert dates to Firebase Timestamps
-          const firstDayOfMonthTimestamp = Timestamp.fromDate(firstDayOfMonth);
-          const lastDayOfMonthTimestamp = Timestamp.fromDate(lastDayOfMonth);
+      if (isTrantoMonth) {
+        // รายรับรายเดือน
+        const firstDayOfMonth = new Date(selectedYear, selectedMonth - 1, 1);
+        const lastDayOfMonth = new Date(selectedYear, selectedMonth, 0);
 
-          incomeQuery = query(
-            collection(db, 'Incomes'),
-            where('time', '>=', firstDayOfMonthTimestamp),
-            where('time', '<=', lastDayOfMonthTimestamp)
-          );
-        } else {
-          const firstDayOfYear = new Date(selectedYear, 0, 1);
-          const lastDayOfYear = new Date(selectedYear, 11, 31);
+        // Convert dates to Firebase Timestamps
+        const firstDayOfMonthTimestamp = Timestamp.fromDate(firstDayOfMonth);
+        const lastDayOfMonthTimestamp = Timestamp.fromDate(lastDayOfMonth);
 
-          const firstDayOfYearTimestamp = Timestamp.fromDate(firstDayOfYear);
-          const lastDayOfYearTimestamp = Timestamp.fromDate(lastDayOfYear);
+        incomeQuery = query(
+          collection(db, 'Incomes'),
+          where('time', '>=', firstDayOfMonthTimestamp),
+          where('time', '<=', lastDayOfMonthTimestamp)
+        );
+      } else {
+        // รายรับรายปี
+        const firstDayOfYear = new Date(selectedYear, 0, 1);
+        const lastDayOfYear = new Date(selectedYear, 11, 31);
 
-          incomeQuery = query(
-            collection(db, 'Incomes'),
-            where('time', '>=', firstDayOfYearTimestamp),
-            where('time', '<=', lastDayOfYearTimestamp)
-          );
-        }
+        const firstDayOfYearTimestamp = Timestamp.fromDate(firstDayOfYear);
+        const lastDayOfYearTimestamp = Timestamp.fromDate(lastDayOfYear);
 
-        // Real-time listener
-        const unsubscribe = onSnapshot(incomeQuery, async (snapshot) => {
-          const incomeIconSnapshot = await getDocs(collection(db, 'IncomeCategories'));
-          const incomeIconList = incomeIconSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setIncomeIcons(incomeIconList);
-
-          const parsedData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setFlatListData(parsedData);
-
-          if (parsedData.length > 0) {
-            const categoryTotals = {};
-            parsedData.forEach(item => {
-              if (!categoryTotals[item.title]) {
-                categoryTotals[item.title] = 0;
-              }
-              categoryTotals[item.title] += item.amount;
-            });
-
-            const total = Object.values(categoryTotals).reduce((sum, value) => sum + value, 0);
-            setTotalIncome(total);
-
-            const dataWithPercentages = Object.keys(categoryTotals).map((category, index) => ({
-              title: category,
-              amount: categoryTotals[category],
-              percentage: ((categoryTotals[category] / total) * 100).toFixed(2),
-              color: colors[index % colors.length],
-            }));
-
-            const updatedIncomeList = parsedData.map(income => {
-              const matchedIcon = incomeIconList.find(icon => icon.name === income.title);
-              return {
-                ...income,
-                imageUrl: matchedIcon ? matchedIcon.imageUrl : null, // If there's no icon, return null
-              };
-            });
-
-            setIncomeData(dataWithPercentages);
-            setFlatListData(updatedIncomeList);
-          } else {
-            setFlatListData([]);
-            setTotalIncome(0);
-            setIncomeData([]);
-          }
-        });
-
-        return () => unsubscribe();
-
-      } catch (error) {
-        console.error('Error fetching incomes:', error);
-      } finally {
-        setLoading(false);
+        incomeQuery = query(
+          collection(db, 'Incomes'),
+          where('time', '>=', firstDayOfYearTimestamp),
+          where('time', '<=', lastDayOfYearTimestamp)
+        );
       }
-    };
 
-    fetchIncomes();
-  }, [selectedMonth, selectedYear]);
+      // Real-time listener
+      const unsubscribe = onSnapshot(incomeQuery, async (snapshot) => {
+        const incomeIconSnapshot = await getDocs(collection(db, 'IncomeCategories'));
+        const incomeIconList = incomeIconSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setIncomeIcons(incomeIconList);
+
+        const parsedData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setFlatListData(parsedData);
+
+        if (parsedData.length > 0) {
+          const categoryTotals = {};
+          parsedData.forEach(item => {
+            if (!categoryTotals[item.title]) {
+              categoryTotals[item.title] = 0;
+            }
+            categoryTotals[item.title] += item.amount;
+          });
+
+          const total = Object.values(categoryTotals).reduce((sum, value) => sum + value, 0);
+          setTotalIncome(total);
+
+          const dataWithPercentages = Object.keys(categoryTotals).map((category, index) => ({
+            title: category,
+            amount: categoryTotals[category],
+            percentage: ((categoryTotals[category] / total) * 100).toFixed(2),
+            color: colors[index % colors.length],
+          }));
+
+          const updatedIncomeList = parsedData.map(income => {
+            const matchedIcon = incomeIconList.find(icon => icon.name === income.title);
+            return {
+              ...income,
+              imageUrl: matchedIcon ? matchedIcon.imageUrl : null, // If there's no icon, return null
+            };
+          });
+
+          setIncomeData(dataWithPercentages);
+          setFlatListData(updatedIncomeList);
+        } else {
+          setFlatListData([]);
+          setTotalIncome(0);
+          setIncomeData([]);
+        }
+      });
+
+      return () => unsubscribe();
+
+    } catch (error) {
+      console.error('Error fetching incomes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchIncomes();
+}, [selectedMonth, selectedYear, isTrantoMonth]); // isTrantoMonth เพื่อเช็คหน้าจอเดือนหรือปี
+
 
   return (
     <View style={styles.container}>
@@ -240,6 +244,8 @@ const IncomeSummaryScreen = () => {
   );
 };
 
+const screenWidth = Dimensions.get('window').width; // ความกว้างของหน้าจอ
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -262,7 +268,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     backgroundColor: 'white',
-    left: 42,
+    left: (screenWidth /4) - 55, // (ความกว้างหน้าจอ - /4)
   },
   totalText: {
     fontSize: 18,

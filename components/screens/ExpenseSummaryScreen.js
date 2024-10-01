@@ -15,6 +15,7 @@ const ExpenseSummaryScreen = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [isTrantoMonth, setIsTrantoMonth] = useState(true);
   const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     setFlatListData([]);
     setTotalExpense(0);
@@ -49,46 +50,43 @@ const ExpenseSummaryScreen = () => {
       setLoading(true);
       try {
         let expensesQuery;
+
         if (isTrantoMonth) {
-          const today = new Date();
-          const firstDayOfMonth = new Date(today.getFullYear(), selectedMonth - 1, 1);
-          const lastDayOfMonth = new Date(today.getFullYear(), selectedMonth, 0);
-  
-          // Convert the dates to Firebase Timestamp
+          // รายจ่ายรายเดือน
+          const firstDayOfMonth = new Date(selectedYear, selectedMonth - 1, 1);
+          const lastDayOfMonth = new Date(selectedYear, selectedMonth, 0);
+
           const firstDayOfMonthTimestamp = Timestamp.fromDate(firstDayOfMonth);
           const lastDayOfMonthTimestamp = Timestamp.fromDate(lastDayOfMonth);
-  
-          // Use Timestamp for querying
+
           expensesQuery = query(
             collection(db, 'Expenses'),
             where('time', '>=', firstDayOfMonthTimestamp),
             where('time', '<=', lastDayOfMonthTimestamp)
           );
         } else {
+          // รายจ่ายรายปี
           const firstDayOfYear = new Date(selectedYear, 0, 1);
           const lastDayOfYear = new Date(selectedYear, 11, 31);
-  
-          // Convert the dates to Firebase Timestamp
+
           const firstDayOfYearTimestamp = Timestamp.fromDate(firstDayOfYear);
           const lastDayOfYearTimestamp = Timestamp.fromDate(lastDayOfYear);
-  
-          // Use Timestamp for querying
+
           expensesQuery = query(
             collection(db, 'Expenses'),
             where('time', '>=', firstDayOfYearTimestamp),
             where('time', '<=', lastDayOfYearTimestamp)
           );
         }
-  
-        // Real-time listener
+
         const unsubscribe = onSnapshot(expensesQuery, async (snapshot) => {
           const expenseIconSnapshot = await getDocs(collection(db, 'ExpenseCategories'));
           const expenseIconList = expenseIconSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           setExpensesicon(expenseIconList);
-  
+
           const parsedData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           setFlatListData(parsedData);
-  
+
           if (parsedData.length > 0) {
             const categoryTotals = {};
             parsedData.forEach(item => {
@@ -97,25 +95,25 @@ const ExpenseSummaryScreen = () => {
               }
               categoryTotals[item.title] += item.amount;
             });
-  
+
             const total = Object.values(categoryTotals).reduce((sum, value) => sum + value, 0);
             setTotalExpense(total);
-  
+
             const dataWithPercentages = Object.keys(categoryTotals).map((category, index) => ({
               title: category,
               amount: categoryTotals[category],
               percentage: ((categoryTotals[category] / total) * 100).toFixed(2),
               color: colors[index % colors.length],
             }));
-  
+
             const updatedExpenseList = parsedData.map(expense => {
               const matchedIcon = expenseIconList.find(icon => icon.name === expense.title);
               return {
                 ...expense,
-                imageUrl: matchedIcon ? matchedIcon.imageUrl : null, // If there's no icon, return null
+                imageUrl: matchedIcon ? matchedIcon.imageUrl : null,
               };
             });
-  
+
             setExpenseData(dataWithPercentages);
             setFlatListData(updatedExpenseList);
           } else {
@@ -124,19 +122,18 @@ const ExpenseSummaryScreen = () => {
             setExpenseData([]);
           }
         });
-  
-        // Cleanup listener on unmount
+
         return () => unsubscribe();
-  
       } catch (error) {
         console.error('Error fetching expenses:', error);
       } finally {
         setLoading(false);
       }
     };
-  
+
     fetchExpenses();
-  }, [selectedMonth, selectedYear]);
+  }, [selectedMonth, selectedYear, isTrantoMonth]); // isTrantoMonth เพื่อเช็คหน้าจอเดือนหรือปี
+
 
   return (
     <View style={styles.container}>
@@ -157,26 +154,27 @@ const ExpenseSummaryScreen = () => {
 
       {/* เลือกเดือนหรือปีตามที่กำหนด */}
       { isTrantoMonth ? (
-        <Picker
-          selectedValue={selectedMonth}
-          style={styles.picker}
-          onValueChange={(itemValue) => setSelectedMonth(itemValue)}
-        >
-          {months.map(month => (
-            <Picker.Item key={month.value} label={month.label} value={month.value} />
-          ))}
-        </Picker>
-      ) : (
-        <Picker
-          selectedValue={selectedYear}
-          style={styles.picker}
-          onValueChange={(itemValue) => setSelectedYear(itemValue)}
-        >
-          {years.map(year => (
-            <Picker.Item key={year} label={year.toString()} value={year} />
-          ))}
-        </Picker>
-      )}
+  <Picker
+    selectedValue={selectedMonth}
+    style={styles.picker}
+    onValueChange={(itemValue) => setSelectedMonth(itemValue)}
+  >
+    {months.map(month => (
+      <Picker.Item key={month.value} label={month.label} value={month.value} />
+    ))}
+  </Picker>
+) : (
+  <Picker
+    selectedValue={selectedYear}
+    style={styles.picker}
+    onValueChange={(itemValue) => setSelectedYear(itemValue)}
+  >
+    {years.map(year => (
+      <Picker.Item key={year} label={year.toString()} value={year} />
+    ))}
+  </Picker>
+)}
+
 
       <View style={styles.chartContainer}>
         <PieChart
@@ -244,6 +242,7 @@ const ExpenseSummaryScreen = () => {
     </View>
   );
 };
+const screenWidth = Dimensions.get('window').width; // ความกว้างของหน้าจอ
 
 const styles = StyleSheet.create({
   container: {
@@ -267,7 +266,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     backgroundColor: 'white',
-    left: 42,
+    left: (screenWidth /4) - 55, // (ความกว้างหน้าจอ /4) - 55
   },
   totalText: {
     fontSize: 18,
