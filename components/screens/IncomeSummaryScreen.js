@@ -4,21 +4,21 @@ import { PieChart } from 'react-native-chart-kit';
 import { Picker } from '@react-native-picker/picker';
 import 'firebase/firestore';
 import { db } from '../../firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-
+import { collection, getDocs,onSnapshot, query, where } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 const IncomeSummaryScreen = () => {
   const [incomeData, setIncomeData] = useState([]);
   const [totalIncome, setTotalIncome] = useState(0);
   const [flatListData, setFlatListData] = useState([]); // State สำหรับ FlatList
-  const [incomeicon, setIncomeicon] = useState([]);
+  const [incomeIcons, setIncomeIcons] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [isTrantoMonth, setIsTrantoMonth] = useState(true);
   const [loading, setLoading] = useState(false);
   useEffect(() => {
     setFlatListData([]);
-    setTotalExpense(0);
-    setExpenseData([]);
+    setTotalIncome(0);
+    setIncomeData([]);
   }, [isTrantoMonth]);
 
   const colors = [
@@ -46,89 +46,91 @@ const IncomeSummaryScreen = () => {
 
   useEffect(() => {
     const fetchIncomes = async () => {
+      setLoading(true);
       try {
         let incomeQuery;
-        if ( isTrantoMonth ) {
-          const today = new Date();
-          const firstDayOfMonth = new Date(today.getFullYear(), selectedMonth - 1, 1);
-          const lastDayOfMonth = new Date(today.getFullYear(), selectedMonth, 0);
+        if (isTrantoMonth) {
+          const firstDayOfMonth = new Date(selectedYear, selectedMonth - 1, 1);
+          const lastDayOfMonth = new Date(selectedYear, selectedMonth, 0);
 
-          const firstDayOfMonthStr = `${(firstDayOfMonth.getMonth() + 1)}/${firstDayOfMonth.getDate()}/${firstDayOfMonth.getFullYear()}`;
-          const lastDayOfMonthStr = `${(lastDayOfMonth.getMonth() + 1)}/${lastDayOfMonth.getDate()}/${lastDayOfMonth.getFullYear()}`;
+          // Convert dates to Firebase Timestamps
+          const firstDayOfMonthTimestamp = Timestamp.fromDate(firstDayOfMonth);
+          const lastDayOfMonthTimestamp = Timestamp.fromDate(lastDayOfMonth);
 
           incomeQuery = query(
             collection(db, 'Incomes'),
-            where('time', '>=', firstDayOfMonthStr),
-            where('time', '<=', lastDayOfMonthStr)
+            where('time', '>=', firstDayOfMonthTimestamp),
+            where('time', '<=', lastDayOfMonthTimestamp)
           );
         } else {
           const firstDayOfYear = new Date(selectedYear, 0, 1);
           const lastDayOfYear = new Date(selectedYear, 11, 31);
 
-          const firstDayOfYearStr = `1/1/${firstDayOfYear.getFullYear()}`;
-          const lastDayOfYearStr = `12/31/${lastDayOfYear.getFullYear()}`;
+          const firstDayOfYearTimestamp = Timestamp.fromDate(firstDayOfYear);
+          const lastDayOfYearTimestamp = Timestamp.fromDate(lastDayOfYear);
 
           incomeQuery = query(
             collection(db, 'Incomes'),
-            where('time', '>=', firstDayOfYearStr),
-            where('time', '<=', lastDayOfYearStr)
+            where('time', '>=', firstDayOfYearTimestamp),
+            where('time', '<=', lastDayOfYearTimestamp)
           );
         }
 
-        const incomeIconSnapshot = await getDocs(collection(db, 'IncomeCategories'));
-        const incomeIconList = incomeIconSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setIncomeicon(incomeIconList);
+        // Real-time listener
+        const unsubscribe = onSnapshot(incomeQuery, async (snapshot) => {
+          const incomeIconSnapshot = await getDocs(collection(db, 'IncomeCategories'));
+          const incomeIconList = incomeIconSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setIncomeIcons(incomeIconList);
 
-        const snapshot = await getDocs(incomeQuery); // ดึงข้อมูลรายรับจาก Firebase
-        const parsedData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setFlatListData(parsedData);
-
-        if (parsedData.length > 0) {
+          const parsedData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           setFlatListData(parsedData);
-  
-          const categoryTotals = {};
-          parsedData.forEach(item => {
-            if (!categoryTotals[item.title]) {
-              categoryTotals[item.title] = 0;
-            }
-            categoryTotals[item.title] += item.amount;
-          });
-  
-          const total = Object.values(categoryTotals).reduce((sum, value) => sum + value, 0);
-          setTotalIncome(total);
-  
-          const dataWithPercentages = Object.keys(categoryTotals).map((category, index) => ({
-            title: category,
-            amount: categoryTotals[category],
-            percentage: ((categoryTotals[category] / total) * 100).toFixed(2),
-            color: colors[index % colors.length],
-          }));
-  
-          // ปรับการแสดงผลไอคอนในแต่ละรายการ
-          const updatedIncomeList = parsedData.map(expense => {
-            const matchedIcon = incomeIconList.find(icon => icon.name === expense.title);
-            return {
-              ...expense,
-              imageUrl: matchedIcon ? matchedIcon.imageUrl : null, // ตรวจสอบว่ามีไอคอนไหม
-            };
-          });
-  
-          setExpenseData(dataWithPercentages);
-          setFlatListData(updatedIncomeList); // ปรับให้ใช้ updatedExpenseList
-        } else {
-          // ถ้าไม่มีข้อมูลในปีนั้นๆ ให้รีเซ็ตข้อมูลแสดงผล
-          setFlatListData([]);
-          setTotalIncome(0);
-          setIncomeData([]);
-        }
+
+          if (parsedData.length > 0) {
+            const categoryTotals = {};
+            parsedData.forEach(item => {
+              if (!categoryTotals[item.title]) {
+                categoryTotals[item.title] = 0;
+              }
+              categoryTotals[item.title] += item.amount;
+            });
+
+            const total = Object.values(categoryTotals).reduce((sum, value) => sum + value, 0);
+            setTotalIncome(total);
+
+            const dataWithPercentages = Object.keys(categoryTotals).map((category, index) => ({
+              title: category,
+              amount: categoryTotals[category],
+              percentage: ((categoryTotals[category] / total) * 100).toFixed(2),
+              color: colors[index % colors.length],
+            }));
+
+            const updatedIncomeList = parsedData.map(income => {
+              const matchedIcon = incomeIconList.find(icon => icon.name === income.title);
+              return {
+                ...income,
+                imageUrl: matchedIcon ? matchedIcon.imageUrl : null, // If there's no icon, return null
+              };
+            });
+
+            setIncomeData(dataWithPercentages);
+            setFlatListData(updatedIncomeList);
+          } else {
+            setFlatListData([]);
+            setTotalIncome(0);
+            setIncomeData([]);
+          }
+        });
+
+        return () => unsubscribe();
+
       } catch (error) {
-        console.error('Error fetching expenses:', error);
+        console.error('Error fetching incomes:', error);
       } finally {
         setLoading(false);
       }
     };
-  
-    fetchExpenses();
+
+    fetchIncomes();
   }, [selectedMonth, selectedYear]);
 
   return (
@@ -225,7 +227,7 @@ const IncomeSummaryScreen = () => {
               </View>
               <View style={styles.inobject}>
                 <Text style={styles.note}>Note: {item.note || 'N/A'}</Text>
-                <Text>{item.time ? new Date(item.time).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'N/A'} น.</Text>
+                <Text>{item.time ? new Date(item.time.toDate()).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'N/A'} น.</Text>
               </View>
             </View>
           </View>
