@@ -11,9 +11,9 @@ const IncomeScreen = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const today = new Date();
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const today = new Date(); // วันที่ปัจจุบัน
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1); // วันแรกของเดือน
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0); // วันสุดท้ายของเดือน
 
     // ใช้ Timestamp ของ Firebase
     const firstDayOfMonthTimestamp = Timestamp.fromDate(firstDayOfMonth);
@@ -45,9 +45,9 @@ const IncomeScreen = () => {
             : income; // ถ้าเจอ name ตรง ก็ใส่ imageUrl, ถ้าไม่เจอ ก็คืนค่า income เดิม
         });
 
-        setIncome(updatedIncomeList);
+        setIncome(updatedIncomeList); // เก็บรายการรายรับที่อัปเดตแล้วใน state
       } catch (error) {
-        console.error('Error fetching income:', error);
+        console.error('Error fetching income:', error); // แสดง error ถ้ามีปัญหาในการดึงข้อมูล
       } finally {
         setLoading(false); // หยุดการแสดง Loading เมื่อดึงข้อมูลเสร็จแล้ว
       }
@@ -56,6 +56,7 @@ const IncomeScreen = () => {
     return () => unsubscribe(); // ยกเลิกการสมัครรับข้อมูลเมื่อ component ถูกทำลาย
   }, []);
 
+  // ฟังก์ชันสำหรับลบรายการ
   const handleDelete = async (item) => {
     Alert.alert(
       'ยืนยันการลบ',
@@ -69,10 +70,10 @@ const IncomeScreen = () => {
           text: 'ลบ',
           onPress: async () => {
             try {
-              await deleteDoc(doc(db, 'Incomes', item.id)); // ใช้ item.id เพื่อระบุเอกสารที่จะลบ
-              setIncome(prev => prev.filter(transaction => transaction.id !== item.id));
+              await deleteDoc(doc(db, 'Incomes', item.id)); // ลบรายการใน Firebase โดยใช้ item.id
+              setIncome(prev => prev.filter(transaction => transaction.id !== item.id)); // ลบรายการจาก state
             } catch (error) {
-              console.error('Error deleting document:', error);
+              console.error('Error deleting document:', error); // แสดง error ถ้าลบข้อมูลไม่สำเร็จ
             }
           },
           style: 'destructive',

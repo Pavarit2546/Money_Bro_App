@@ -4,8 +4,8 @@ import { PieChart } from 'react-native-chart-kit';
 import { Picker } from '@react-native-picker/picker';
 import 'firebase/firestore';
 import { db } from '../../firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-
+import { collection,getDocs, onSnapshot, query, where } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore'; 
 const ExpenseSummaryScreen = () => {
   const [expenseData, setExpenseData] = useState([]);
   const [totalExpense, setTotalExpense] = useState(0);
@@ -53,75 +53,81 @@ const ExpenseSummaryScreen = () => {
           const today = new Date();
           const firstDayOfMonth = new Date(today.getFullYear(), selectedMonth - 1, 1);
           const lastDayOfMonth = new Date(today.getFullYear(), selectedMonth, 0);
-
-          const firstDayOfMonthStr = `${(firstDayOfMonth.getMonth() + 1)}/${firstDayOfMonth.getDate()}/${firstDayOfMonth.getFullYear()}`;
-          const lastDayOfMonthStr = `${(lastDayOfMonth.getMonth() + 1)}/${lastDayOfMonth.getDate()}/${lastDayOfMonth.getFullYear()}`;
-
+  
+          // Convert the dates to Firebase Timestamp
+          const firstDayOfMonthTimestamp = Timestamp.fromDate(firstDayOfMonth);
+          const lastDayOfMonthTimestamp = Timestamp.fromDate(lastDayOfMonth);
+  
+          // Use Timestamp for querying
           expensesQuery = query(
             collection(db, 'Expenses'),
-            where('time', '>=', firstDayOfMonthStr),
-            where('time', '<=', lastDayOfMonthStr)
+            where('time', '>=', firstDayOfMonthTimestamp),
+            where('time', '<=', lastDayOfMonthTimestamp)
           );
         } else {
           const firstDayOfYear = new Date(selectedYear, 0, 1);
           const lastDayOfYear = new Date(selectedYear, 11, 31);
-
-          const firstDayOfYearStr = `1/1/${firstDayOfYear.getFullYear()}`;
-          const lastDayOfYearStr = `12/31/${lastDayOfYear.getFullYear()}`;
-
+  
+          // Convert the dates to Firebase Timestamp
+          const firstDayOfYearTimestamp = Timestamp.fromDate(firstDayOfYear);
+          const lastDayOfYearTimestamp = Timestamp.fromDate(lastDayOfYear);
+  
+          // Use Timestamp for querying
           expensesQuery = query(
             collection(db, 'Expenses'),
-            where('time', '>=', firstDayOfYearStr),
-            where('time', '<=', lastDayOfYearStr)
+            where('time', '>=', firstDayOfYearTimestamp),
+            where('time', '<=', lastDayOfYearTimestamp)
           );
         }
-
-        const expensesIconSnapshot = await getDocs(collection(db, 'ExpenseCategories'));
-        const expenseIconList = expensesIconSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setExpensesicon(expenseIconList);
-
-        const snapshot = await getDocs(expensesQuery);
-        const parsedData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setFlatListData(parsedData);
-
-        if (parsedData.length > 0) {
+  
+        // Real-time listener
+        const unsubscribe = onSnapshot(expensesQuery, async (snapshot) => {
+          const expenseIconSnapshot = await getDocs(collection(db, 'ExpenseCategories'));
+          const expenseIconList = expenseIconSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setExpensesicon(expenseIconList);
+  
+          const parsedData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           setFlatListData(parsedData);
   
-          const categoryTotals = {};
-          parsedData.forEach(item => {
-            if (!categoryTotals[item.title]) {
-              categoryTotals[item.title] = 0;
-            }
-            categoryTotals[item.title] += item.amount;
-          });
+          if (parsedData.length > 0) {
+            const categoryTotals = {};
+            parsedData.forEach(item => {
+              if (!categoryTotals[item.title]) {
+                categoryTotals[item.title] = 0;
+              }
+              categoryTotals[item.title] += item.amount;
+            });
   
-          const total = Object.values(categoryTotals).reduce((sum, value) => sum + value, 0);
-          setTotalExpense(total);
+            const total = Object.values(categoryTotals).reduce((sum, value) => sum + value, 0);
+            setTotalExpense(total);
   
-          const dataWithPercentages = Object.keys(categoryTotals).map((category, index) => ({
-            title: category,
-            amount: categoryTotals[category],
-            percentage: ((categoryTotals[category] / total) * 100).toFixed(2),
-            color: colors[index % colors.length],
-          }));
+            const dataWithPercentages = Object.keys(categoryTotals).map((category, index) => ({
+              title: category,
+              amount: categoryTotals[category],
+              percentage: ((categoryTotals[category] / total) * 100).toFixed(2),
+              color: colors[index % colors.length],
+            }));
   
-          // ปรับการแสดงผลไอคอนในแต่ละรายการ
-          const updatedExpenseList = parsedData.map(expense => {
-            const matchedIcon = expenseIconList.find(icon => icon.name === expense.title);
-            return {
-              ...expense,
-              imageUrl: matchedIcon ? matchedIcon.imageUrl : null, // ตรวจสอบว่ามีไอคอนไหม
-            };
-          });
+            const updatedExpenseList = parsedData.map(expense => {
+              const matchedIcon = expenseIconList.find(icon => icon.name === expense.title);
+              return {
+                ...expense,
+                imageUrl: matchedIcon ? matchedIcon.imageUrl : null, // If there's no icon, return null
+              };
+            });
   
-          setExpenseData(dataWithPercentages);
-          setFlatListData(updatedExpenseList); // ปรับให้ใช้ updatedExpenseList
-        } else {
-          // ถ้าไม่มีข้อมูลในปีนั้นๆ ให้รีเซ็ตข้อมูลแสดงผล
-          setFlatListData([]);
-          setTotalExpense(0);
-          setExpenseData([]);
-        }
+            setExpenseData(dataWithPercentages);
+            setFlatListData(updatedExpenseList);
+          } else {
+            setFlatListData([]);
+            setTotalExpense(0);
+            setExpenseData([]);
+          }
+        });
+  
+        // Cleanup listener on unmount
+        return () => unsubscribe();
+  
       } catch (error) {
         console.error('Error fetching expenses:', error);
       } finally {
@@ -226,7 +232,7 @@ const ExpenseSummaryScreen = () => {
               </View>
               <View style={styles.inobject}>
                 <Text style={styles.note}>Note: {item.note || 'N/A'}</Text>
-                <Text>{item.time ? new Date(item.time).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'N/A'} น.</Text>
+                <Text>{item.time ? new Date(item.time.toDate()).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'N/A'} น.</Text>
               </View>
             </View>
           </View>

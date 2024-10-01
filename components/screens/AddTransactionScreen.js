@@ -9,14 +9,14 @@ import { Timestamp } from 'firebase/firestore';
 // ฟังก์ชันสำหรับบันทึกรายการ
 const saveTransaction = async (transaction, type, navigation) => {
   try {
-    const { title, amount, note, date } = transaction;
+    const { title, amount, note, time } = transaction;
 
     // แปลง amount เป็นตัวเลขและเพิ่ม note, time
     const transactionData = { 
       title, 
       amount: parseFloat(amount), 
       note: note || 'N/A',
-      date: date ? Timestamp.fromDate(new Date(date)) : Timestamp.now() 
+      time: time ? Timestamp.fromDate(new Date(time)) : Timestamp.now() // ใช้ time แทน date
     };
     console.log('Saving transaction data:', transactionData);
     
@@ -29,8 +29,9 @@ const saveTransaction = async (transaction, type, navigation) => {
       await updateGoalRemainingAmount(transactionData);
     }
 
+    // ส่งข้อมูล transaction กลับไปยังหน้าแรก พร้อมแปลง time ให้เป็น string เพื่อป้องกันปัญหาในการ serialize
     navigation.navigate('หน้าแรก', {
-      transaction: { id: docRef.id, ...transactionData }, // ส่ง ID กลับไปด้วย
+      transaction: { id: docRef.id, ...transactionData, time: transactionData.time.toDate().toString() }, // ทำให้ time สามารถ serialize ได้
       type
     });
   } catch (error) {
@@ -76,33 +77,35 @@ const AddTransactionScreen = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const inputRef = useRef(null);
   const [note, setNote] = useState('');
-  const [date, setDate] = useState('');
+  const [time, setTime] = useState(''); // ใช้ time แทน date
 
+  // โฟกัสไปที่ช่องกรอกข้อมูลเมื่อหน้าจอเปิดขึ้น
   useFocusEffect(
     React.useCallback(() => {
-      // เมื่อเข้ามาที่หน้า "เพิ่ม" ให้คีย์บอร์ดโผล่ขึ้นมาโดยโฟกัสที่ TextInput
       if (inputRef.current) {
         inputRef.current.focus();
       }
     }, [])
   );
 
-  useEffect(() => { // useEffect นี้เอาไว้รีเซ็ตสถานะเมื่อเข้าหน้า
+  useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      resetForm(); // เรียกใช้ฟังก์ชันรีเซ็ต
+      resetForm(); // รีเซ็ตข้อมูลเมื่อเปิดหน้า
     });
 
     return unsubscribe;
   }, [navigation]);
 
+  // รีเซ็ตช่องกรอกข้อมูลทั้งหมด
   const resetForm = () => {
     setSelectedCategory(null); 
     setTitle('');
     setAmount('');
     setNote('');
-    setDate('');
+    setTime(''); // รีเซ็ต time
   };
 
+  // ดึงหมวดหมู่รายจ่ายและรายรับจาก Firestore
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -124,6 +127,7 @@ const AddTransactionScreen = ({ navigation }) => {
 
   const categories = isShowingExpenses ? expenseCategories : incomeCategories;
 
+  // ฟังก์ชันสำหรับบันทึกรายการหลังจากตรวจสอบข้อมูลแล้ว
   const handleSave = async () => {
     if (title && amount && selectedCategory) { 
       if (isNaN(amount) || parseFloat(amount) <= 0) {
@@ -135,8 +139,7 @@ const AddTransactionScreen = ({ navigation }) => {
         amount: parseFloat(amount), 
         category: selectedCategory.name, 
         note: note || 'N/A', 
-        date: date || new Date().toISOString()
-        
+        time: time || new Date().toISOString() // ใช้ time แทน date
       }; 
       const type = isShowingExpenses ? 'expense' : 'income';
 
