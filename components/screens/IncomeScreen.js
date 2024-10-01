@@ -4,6 +4,7 @@ import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { Timestamp } from 'firebase/firestore';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const IncomeScreen = () => {
   const [income, setIncome] = useState([]);
@@ -113,8 +114,8 @@ const IncomeScreen = () => {
                   <Text>{item.time ? new Date(item.time.toDate()).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'N/A'} น.</Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => handleDelete(item)} style={styles.object3}>
-                <Text style={styles.delete}>ลบ</Text>
+              <TouchableOpacity onPress={() => handleDelete(item)}>
+                <Ionicons name="trash-outline" size={24} color="red" />
               </TouchableOpacity>
             </View>
           )}

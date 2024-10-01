@@ -7,34 +7,12 @@ import { useNavigation } from '@react-navigation/native';
 import { TypeContext } from '../../TypeContext';
 
 
-// ฟังก์ชันสำหรับโหลดรายการ
-const loadTransactions = async (type) => {
-  try {
-    const data = await AsyncStorage.getItem(type);
-    return data ? JSON.parse(data) : [];
-  } catch (error) {
-    console.error('Error loading data:', error);
-    return [];
-  }
-};
-
-
 const HomeScreen = ({ route }) => {
   const [isShowingExpenses, setIsShowingExpenses] = useState(true);
   const [expense, setExpense] = useState([]);
   const [income, setIncome] = useState([]);
   const { setType } = useContext(TypeContext);
-  const navigation = useNavigation();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const expenseData = await loadTransactions('expense');
-      const incomeData = await loadTransactions('income');
-      setExpense(expenseData);
-      setIncome(incomeData);
-    };
-    fetchData();
-  }, []);
 
   useEffect(() => { //useEffect นี้ใช้แสดงข้อมูลที่ถูกบันทึกจากในหน้าเพิ่ม
     if (route.params?.transaction) {
@@ -45,19 +23,11 @@ const HomeScreen = ({ route }) => {
       if (type === 'expense') {
         setExpense(prevExpense => {
           const isExist = prevExpense.some(item => item.title === title && item.amount === amount && item.note === note && item.time === time);
-          if (!isExist) {
-            saveTransaction(newTransaction, 'expense');
-            return [...prevExpense, newTransaction];
-          }
           return prevExpense;
         });
       } else if (type === 'income') {
         setIncome(prevIncome => {
           const isExist = prevIncome.some(item => item.title === title && item.amount === amount && item.note === note && item.time === time);
-          if (!isExist) {
-            saveTransaction(newTransaction, 'income');
-            return [...prevIncome, newTransaction];
-          }
           return prevIncome;
         });
       }
@@ -65,26 +35,6 @@ const HomeScreen = ({ route }) => {
       route.params = {};
     }
   }, [route.params]);
-
-  const saveTransaction = async (transaction, type) => {
-    try {
-      if (!transaction.title || transaction.amount === undefined) {
-        console.error('Transaction data is incomplete:', transaction);
-        return;
-      }
-
-      const existingData = await AsyncStorage.getItem(type);
-      const currentData = existingData ? JSON.parse(existingData) : [];
-      const isExist = currentData.some(item => item.title === transaction.title && item.amount === transaction.amount && item.note === transaction.note && item.time === transaction.time);
-
-      if (!isExist) {
-        const updatedData = [...currentData, transaction];
-        await AsyncStorage.setItem(type, JSON.stringify(updatedData));
-      }
-    } catch (error) {
-      console.error('Error saving transaction:', error);
-    }
-  };
 
 
   return (

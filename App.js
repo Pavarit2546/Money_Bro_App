@@ -6,6 +6,7 @@ import { Text, Keyboard } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome5';
 import { TypeProvider } from './TypeContext';
+
 // Import your screens here
 import HomeScreen from './components/screens/Home';
 import SummaryScreen from './components/screens/SummaryScreen';
